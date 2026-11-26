@@ -1,0 +1,93 @@
+# ─────────────────────────────────────────────
+#  Group Survival System 설정
+# ─────────────────────────────────────────────
+
+night-vision:
+  # /nv 로 영구 야간투시 켜기/끄기
+  enabled: true
+
+elytra:
+  # false = 겉날개 금지 상태
+  #   - 겉날개가 걸린 아이템 액자는 어떤 방법으로도 떼거나 부술 수 없음
+  #   - 겉날개를 가지고 있어도 활공 불가
+  # 콘솔 명령어로 변경: gss elytra on | off | status
+  allowed: false
+
+dragon:
+  # 엔더드래곤 최대 체력 배율 (기본 200 x 5 = 1000)
+  # spigot.yml 의 settings.attribute.maxHealth.max 보다 작아야 함
+  health-multiplier: 5.0
+
+coordinates:
+  # 좌표를 숨길 월드 이름 목록. 비워두면 모든 오버월드(NORMAL) 환경 월드
+  hidden-worlds: []
+  # 숨김 월드에서 F3 좌표 숨김 (reducedDebugInfo)
+  reduced-debug-info: true
+  offset:
+    # 숨김 월드에서 클라이언트로 가는 모든 좌표를 무작위로 밀어서 보냄
+    # (미니맵/좌표 모드로도 실제 좌표를 알 수 없음). 재접속할 때마다 새로 뽑음
+    # ⚠ 실험 기능: 현재 이동 패킷 복원에 알려진 문제가 있어 기본값은 꺼짐
+    enabled: false
+    # 오프셋 크기 범위 (청크 단위, 1청크 = 16블록)
+    min-chunks: 5000
+    max-chunks: 40000
+
+communication:
+  # 채팅 완전 금지
+  block-chat: true
+  # 일반 플레이어가 쓸 수 있는 명령어 (gss.bypass.commands 권한은 무시)
+  allowed-commands:
+    - nv
+  # 책과 깃펜 작성 금지
+  block-books: true
+  # 모루 이름 변경 금지
+  block-anvil-rename: true
+  # 이름표 사용 금지
+  block-name-tags: true
+  signs:
+    # 0,0 청크 기준 반경 (1 = 0,0 청크 + 주변 8청크 = 3x3)
+    zone-radius-chunks: 1
+    # 표지판 규칙을 적용할 월드. 비워두면 모든 월드
+    worlds: []
+    # 금지 구역에서 표지판을 쓰면 바뀌는 내용 (4줄)
+    replacement:
+      - "표지판은"
+      - "0,0 근처 청크에서만"
+      - "사용이 가능합니다"
+      - ""
+
+anonymity:
+  # 다른 플레이어에게 보이는 이름 (이름표는 항상 숨김)
+  anonymous-name: "익명"
+  # 이 거리(블록) 안에 있는 플레이어만 클라이언트에 전송됨 (스킨으로 알아볼 수 있음)
+  # 이 밖의 플레이어는 탭/소셜 화면/패킷 어디에도 존재하지 않음
+  visibility-range: 48
+  # 서버 목록에서 인원/플레이어 목록 숨김
+  hide-server-list-players: true
+
+client-check:
+  # 바닐라 + Lunar Client 만 허용
+  enabled: true
+  allowed-brands:
+    - vanilla
+  allow-lunar: true
+  # 접속 후 검사까지 대기 (틱). Lunar 감지(Apollo)에 시간이 조금 걸림
+  check-delay-ticks: 100
+  kick-message: "이 서버는 바닐라 또는 Lunar Client 로만 접속할 수 있습니다."
+
+lunar:
+  # Apollo-Bukkit 플러그인이 있어야 동작함
+  enabled: true
+  # 강제로 끌 Lunar 모드 옵션 ("Mod이름.옵션" 형식, Apollo ModXxx 클래스 기준)
+  disabled-options:
+    - Minimap.ENABLED            # 미니맵 (좌표, 플레이어 레이더)
+    - Coordinates.ENABLED        # 좌표 HUD
+    - Waypoints.ENABLED          # 웨이포인트 / 사망 지점
+    - LocatorBar.ENABLED         # 위치 표시줄 (플레이어 머리/이름)
+    - TeamView.ENABLED           # 팀원 벽 너머 표시
+    - Markers.ENABLED            # 핑 마커 (Lunar 친구와 공유 = 통신)
+    - MumbleLink.ENABLED         # Mumble 위치 기반 음성
+    - Waila.SHOW_BLOCK_COORDS    # 바라보는 블록 좌표
+    - DirectionHud.SHOW_TEAMMATES
+    - DirectionHud.SHOW_WAYPOINTS
+    - DirectionHud.SHOW_EXTERNAL_MARKERS
