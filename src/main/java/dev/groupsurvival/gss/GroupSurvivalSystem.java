@@ -4,6 +4,7 @@ import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerCommon;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import dev.groupsurvival.gss.command.GssCommand;
+import dev.groupsurvival.gss.effect.PermanentEffects;
 import dev.groupsurvival.gss.feature.ActivityLogFeature;
 import dev.groupsurvival.gss.feature.AnonymityFeature;
 import dev.groupsurvival.gss.feature.ClientCheckFeature;
@@ -18,6 +19,7 @@ import dev.groupsurvival.gss.packet.AnonymityPacketListener;
 import dev.groupsurvival.gss.packet.CompassTargetListener;
 import dev.groupsurvival.gss.packet.HiddenWorlds;
 import dev.groupsurvival.gss.packet.ReducedDebugInfoListener;
+import dev.groupsurvival.gss.upgrade.UpgradeFeature;
 import dev.groupsurvival.gss.util.FileLog;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +33,7 @@ public final class GroupSurvivalSystem extends JavaPlugin {
     private final List<PacketListenerCommon> packetListeners = new ArrayList<>();
     private boolean apolloPresent;
     private FileLog fileLog;
+    private UpgradeFeature upgrades;
 
     @Override
     public void onEnable() {
@@ -41,15 +44,25 @@ public final class GroupSurvivalSystem extends JavaPlugin {
         HiddenWorlds hiddenWorlds = new HiddenWorlds(this);
         register(hiddenWorlds);
 
+        PermanentEffects effects = new PermanentEffects(this);
+        register(effects);
+
+        NightVisionFeature nightVision = null;
         if (getConfig().getBoolean("night-vision.enabled", true)) {
-            NightVisionFeature nightVision = new NightVisionFeature(this, fileLog);
-            register(nightVision);
+            nightVision = new NightVisionFeature(this, fileLog);
+            nightVision.attach(effects);
             Objects.requireNonNull(getCommand("nv")).setExecutor(nightVision);
+        }
+
+        upgrades = new UpgradeFeature(this, fileLog, effects, nightVision);
+        register(upgrades);
+        for (String command : new String[]{"강화", "체력강화", "성급함강화"}) {
+            Objects.requireNonNull(getCommand(command)).setExecutor(upgrades);
         }
 
         ElytraFeature elytra = new ElytraFeature(this, fileLog);
         register(elytra);
-        Objects.requireNonNull(getCommand("gss")).setExecutor(new GssCommand(elytra));
+        Objects.requireNonNull(getCommand("gss")).setExecutor(new GssCommand(elytra, upgrades));
 
         register(new DragonFeature(this));
         register(new CommunicationFeature(this));
@@ -97,6 +110,7 @@ public final class GroupSurvivalSystem extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (upgrades != null) upgrades.closeAll();
         if (PacketEvents.getAPI() != null) {
             for (PacketListenerCommon listener : packetListeners) {
                 PacketEvents.getAPI().getEventManager().unregisterListener(listener);
