@@ -265,6 +265,21 @@ LANG=C.UTF-8 java -jar paper.jar --nogui
 - 낙사, 몹, `/kill` 등 플레이어가 아닌 원인으로 죽으면 떨어지지 않습니다.
 - `player-head.anonymous: true`로 바꾸면 닉네임 없이 스킨만 담습니다.
 
+### 좀벌레 완전 제거
+좀벌레는 게임에서 **눈에 띄는 곳 어디에도 나오지 않습니다.**
+
+| 항목 | 처리 |
+|---|---|
+| 좀벌레 생성 | 스포너, 시련 스포너, 벌레 먹은 블록, 스폰 알, `/summon` 등 모든 경로 차단. 이미 있던 좀벌레는 제거 |
+| 벌레 먹은 블록 (산, 요새, 이글루 등) | 청크가 처음 로드될 때 일반 블록(돌, 석재 벽돌, 심층암 등)으로 바뀜 |
+| 요새의 좀벌레 스포너 | 빈 스포너로 바뀜 (안에서 도는 모형도 없음) |
+| 구리 던전(시련의 회당)의 좀벌레 시련 스포너 | 동굴 거미로 바뀜 (`silverfish.trial-spawner-replacement`) |
+| 직접 설치한 좀벌레 스포너 | 설치하는 순간 빈 스포너로 바뀜. 스포너에 좀벌레 스폰 알 사용 불가 |
+| 벌레먹음 상태이상 | 걸리지 않음 (`/effect`, 물약, 화살 모두) |
+| 벌레먹음 물약 | 양조대에서 만들어지지 않음 |
+
+- 각 청크는 한 번만 검사하고 표시를 남겨서, 다음에 로드될 때는 건너뜁니다. 이미 있던 월드에 설치해도, 청크가 처음 로드될 때 정리됩니다.
+
 ### 엔더드래곤
 - 최대 체력이 **5배** (200 → 1000)입니다. 다시 소환한 드래곤에도 적용됩니다.
 
@@ -302,6 +317,8 @@ LANG=C.UTF-8 java -jar paper.jar --nogui
 | `world-border.center-x` / `center-z` | `0` / `0` | 벽 중심 |
 | `world-border.expand-minutes` | `10` | 다음 단계로 넓어지는 데 걸리는 시간 (분) |
 | `world-border.stages` | 위 표 | `size`(한 변 길이)와 `at`(한국시간 `yyyy-MM-dd HH:mm`, 비우면 처음부터) |
+| `silverfish.remove` | `true` | 좀벌레 완전 제거 |
+| `silverfish.trial-spawner-replacement` | `CAVE_SPIDER` | 좀벌레 시련 스포너를 대신할 몹 |
 | `night-vision.enabled` | `true` | 야간투시 기능 (`/nv`, 강화 창 스위치) |
 | `elytra.allowed` | `false` | 겉날개 허용 여부 (`gss elytra`로 바뀌면 자동 저장) |
 | `dragon.health-multiplier` | `5.0` | 엔더드래곤 체력 배율 |

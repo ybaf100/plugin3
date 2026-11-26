@@ -34,6 +34,13 @@ world-border:
     - size: 10000
       at: "2027-01-31 16:30"  # 3단계 시작 시각 (바꿔서 쓰세요)
 
+silverfish:
+  # 좀벌레 완전 제거: 어떤 방법으로도 생성되지 않고, 벌레 먹은 블록은 일반 블록으로 바뀌며,
+  # 벌레먹음 상태이상/물약도 없음. 요새의 좀벌레 스포너는 빈 스포너가 됨
+  remove: true
+  # 좀벌레가 나오던 시련 스포너(구리 던전)를 대신할 몹
+  trial-spawner-replacement: CAVE_SPIDER
+
 night-vision:
   # /nv 로 영구 야간투시 켜기/끄기
   enabled: true

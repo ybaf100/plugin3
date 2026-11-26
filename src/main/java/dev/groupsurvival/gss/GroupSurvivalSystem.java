@@ -17,6 +17,7 @@ import dev.groupsurvival.gss.feature.NightVisionFeature;
 import dev.groupsurvival.gss.feature.PlayerHeadFeature;
 import dev.groupsurvival.gss.feature.RandomSpawnFeature;
 import dev.groupsurvival.gss.feature.SafeZoneFeature;
+import dev.groupsurvival.gss.feature.SilverfishFeature;
 import dev.groupsurvival.gss.feature.WorldBorderFeature;
 import dev.groupsurvival.gss.integration.LunarIntegration;
 import dev.groupsurvival.gss.packet.AnonymityPacketListener;
@@ -75,6 +76,11 @@ public final class GroupSurvivalSystem extends JavaPlugin {
         Objects.requireNonNull(getCommand("gss")).setExecutor(new GssCommand(elytra, upgrades, border));
 
         register(new DragonFeature(this));
+        if (getConfig().getBoolean("silverfish.remove", true)) {
+            SilverfishFeature silverfish = new SilverfishFeature(this);
+            register(silverfish);
+            silverfish.start();
+        }
         register(new CommunicationFeature(this));
         register(new HandSwapActionFeature(this, fileLog));
         register(new ActivityLogFeature(fileLog));
