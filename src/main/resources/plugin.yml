@@ -8,6 +8,10 @@ depend: [packetevents]
 softdepend: [Apollo-Bukkit]
 
 commands:
+  인증:
+    description: 첫 접속 인증 키를 입력합니다.
+    usage: /인증 <키>
+    aliases: [auth]
   nv:
     description: 영구 야간투시를 켜거나 끕니다.
     usage: /nv
@@ -35,6 +39,9 @@ permissions:
   gss.bypass.commands:
     description: 명령어 제한 무시 (관리자용)
     default: op
+  gss.bypass.auth:
+    description: 첫 접속 인증 건너뛰기
+    default: false
   gss.bypass.clientcheck:
     description: 클라이언트 검사 무시
     default: false

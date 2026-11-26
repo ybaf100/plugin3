@@ -43,7 +43,7 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * 통합 강화 창 (/강화, /체력강화, /성급함강화).
- * - 왼쪽 세로줄: 탭 (체력 / 성급함 / 불토뭉치 준비 중)
+ * - 왼쪽 세로줄: 탭 (체력 / 성급함)
  * - 맨 윗줄: 단계 로드맵, 가운데: 재료 + 게이지, 아랫줄: 사용법 / 강화 / 야간투시·성급함 스위치 / 닫기
  * - 재료는 플레이어가 인벤토리의 아이템을 직접 클릭해야만 들어감 (좌클릭 = 그 칸 전부, 우클릭 = 1개, 자동 투입 없음)
  * - 재료는 나눠서 넣을 수 있고, 넣은 재료는 돌려주지 않음
@@ -462,8 +462,6 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         inv.setItem(UpgradeMenu.TAB_HASTE, item(pick, 1, text("성급함 강화", NamedTextColor.GOLD),
                 List.of(Component.empty(), text("현재: " + haste.label(hasteLevel), NamedTextColor.WHITE),
                         text(!healthTab ? "보고 있는 탭" : "클릭해서 열기", NamedTextColor.YELLOW)), !healthTab));
-        inv.setItem(UpgradeMenu.TAB_FIRE, item(Material.GRAY_DYE, 1, text("불토뭉치 제조", NamedTextColor.GRAY),
-                List.of(Component.empty(), text("준비 중입니다", NamedTextColor.DARK_GRAY)), false));
 
         // 단계 로드맵 (맨 윗줄 1~8)
         List<Integer> targets = new ArrayList<>();

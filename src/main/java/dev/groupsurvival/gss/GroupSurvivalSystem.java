@@ -7,6 +7,7 @@ import dev.groupsurvival.gss.command.GssCommand;
 import dev.groupsurvival.gss.effect.PermanentEffects;
 import dev.groupsurvival.gss.feature.ActivityLogFeature;
 import dev.groupsurvival.gss.feature.AnonymityFeature;
+import dev.groupsurvival.gss.feature.AuthFeature;
 import dev.groupsurvival.gss.feature.ClientCheckFeature;
 import dev.groupsurvival.gss.feature.CommunicationFeature;
 import dev.groupsurvival.gss.feature.DragonFeature;
@@ -14,6 +15,7 @@ import dev.groupsurvival.gss.feature.ElytraFeature;
 import dev.groupsurvival.gss.feature.HandSwapActionFeature;
 import dev.groupsurvival.gss.feature.NightVisionFeature;
 import dev.groupsurvival.gss.feature.PlayerHeadFeature;
+import dev.groupsurvival.gss.feature.RandomSpawnFeature;
 import dev.groupsurvival.gss.feature.SafeZoneFeature;
 import dev.groupsurvival.gss.integration.LunarIntegration;
 import dev.groupsurvival.gss.packet.AnonymityPacketListener;
@@ -69,6 +71,12 @@ public final class GroupSurvivalSystem extends JavaPlugin {
         register(new CommunicationFeature(this));
         register(new HandSwapActionFeature(this, fileLog));
         register(new ActivityLogFeature(fileLog));
+        if (getConfig().getBoolean("random-spawn.enabled", true)) register(new RandomSpawnFeature(this));
+        if (getConfig().getBoolean("auth.enabled", true)) {
+            AuthFeature auth = new AuthFeature(this, fileLog);
+            register(auth);
+            Objects.requireNonNull(getCommand("인증")).setExecutor(auth);
+        }
         if (getConfig().getBoolean("player-head.enabled", true)) register(new PlayerHeadFeature(this));
 
         SafeZoneFeature safeZone = new SafeZoneFeature(this);
