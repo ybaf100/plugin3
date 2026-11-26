@@ -13,6 +13,7 @@ public final class UpgradeMenu implements InventoryHolder {
     public static final int TAB_HASTE = 9;
     public static final int TAB_FIRE = 18;
     public static final int INFO = 46;
+    public static final int ADVANCEMENTS = 47;
     public static final int UPGRADE = 49;
     public static final int TOGGLE_NIGHT_VISION = 51;
     public static final int TOGGLE_HASTE = 52;

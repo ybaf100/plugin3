@@ -22,12 +22,15 @@ public final class UpgradeTrack {
     private final int max;
     private final Map<Integer, List<Requirement>> steps;
     private final IntFunction<String> label;
+    private final Map<Integer, Integer> advancements;
 
-    private UpgradeTrack(String id, String name, int start, Map<Integer, List<Requirement>> steps, IntFunction<String> label) {
+    private UpgradeTrack(String id, String name, int start, Map<Integer, List<Requirement>> steps,
+                         Map<Integer, Integer> advancements, IntFunction<String> label) {
         this.id = id;
         this.name = name;
         this.start = start;
         this.steps = steps;
+        this.advancements = advancements;
         this.label = label;
         int last = start - 1;
         for (int level : steps.keySet()) last = Math.max(last, level);
@@ -35,7 +38,7 @@ public final class UpgradeTrack {
     }
 
     public static UpgradeTrack load(String id, String name, int start, ConfigurationSection stepsSection,
-                                    IntFunction<String> label, Logger logger) {
+                                    ConfigurationSection advancementSection, IntFunction<String> label, Logger logger) {
         Map<Integer, List<Requirement>> steps = new TreeMap<>();
         if (stepsSection != null) {
             for (String levelKey : stepsSection.getKeys(false)) {
@@ -66,7 +69,19 @@ public final class UpgradeTrack {
                 if (level >= start && !list.isEmpty()) steps.put(level, Collections.unmodifiableList(list));
             }
         }
-        return new UpgradeTrack(id, name, start, steps, label);
+        Map<Integer, Integer> advancements = new TreeMap<>();
+        if (advancementSection != null) {
+            for (String levelKey : advancementSection.getKeys(false)) {
+                try {
+                    int level = Integer.parseInt(levelKey.trim());
+                    int count = advancementSection.getInt(levelKey, 0);
+                    if (count > 0) advancements.put(level, count);
+                } catch (NumberFormatException e) {
+                    logger.warning("[" + name + " 강화] 도전과제 조건의 단계 번호가 숫자가 아님: " + levelKey);
+                }
+            }
+        }
+        return new UpgradeTrack(id, name, start, steps, advancements, label);
     }
 
     public String id() {
@@ -87,6 +102,11 @@ public final class UpgradeTrack {
 
     public List<Requirement> requirements(int level) {
         return steps.getOrDefault(level, List.of());
+    }
+
+    /** level -> level+1 강화에 필요한 도전과제 수 (없으면 0) */
+    public int advancementsRequired(int level) {
+        return advancements.getOrDefault(level, 0);
     }
 
     public String label(int level) {

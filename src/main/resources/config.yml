@@ -123,6 +123,10 @@ health-upgrade:
     "20": { NETHER_WART: 192, GOLDEN_CARROT: 640 }
     "21": { DRAGON_BREATH: 64, TRIDENT: 2 }
     "22": { DIAMOND_BLOCK: 192, CONDUIT: 1, SPONGE: 16 }
+  # 도전과제 조건: "현재 하트": 필요한 도전과제 수 (레시피 해금 제외, 26.3 기준 전체 126개)
+  # 재료는 미리 넣을 수 있지만, 도전과제 수가 모자라면 강화 버튼이 눌리지 않음
+  advancements:
+    "10": 15   # 10 -> 11하트 (기본 체력 10하트를 넘어설 때)
 
 haste-upgrade:
   # 성급함 레벨 0(해금 안 함) -> I -> II. 죽어도 다시 지급되는 영구 효과, 창에서 켜고 끌 수 있음
@@ -137,6 +141,10 @@ haste-upgrade:
       COPPER_INGOT: 64
       AMETHYST_SHARD: 64
     "1": { RECOVERY_COMPASS: 1, LODESTONE: 1, DRAGON_HEAD: 1 }
+  # 도전과제 조건: "현재 단계": 필요한 도전과제 수
+  advancements:
+    "0": 20    # 성급함 해금
+    "1": 40    # 성급함 I -> II
 
 anonymity:
   # 다른 플레이어에게 보이는 이름 (이름표는 항상 숨김)

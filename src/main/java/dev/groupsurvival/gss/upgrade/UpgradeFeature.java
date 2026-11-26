@@ -6,11 +6,15 @@ import dev.groupsurvival.gss.util.FileLog;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
+import org.bukkit.advancement.Advancement;
 import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -24,6 +28,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.Inventory;
@@ -55,6 +60,7 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
     private final NightVisionFeature nightVision;
     private final UpgradeTrack health;
     private final UpgradeTrack haste;
+    private final Set<UUID> pendingRefresh = ConcurrentHashMap.newKeySet();
 
     public UpgradeFeature(JavaPlugin plugin, FileLog log, PermanentEffects effects, NightVisionFeature nightVision) {
         this.plugin = plugin;
@@ -64,9 +70,11 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         this.nightVision = nightVision;
         var config = plugin.getConfig();
         this.health = UpgradeTrack.load(HEALTH, "체력", config.getInt("health-upgrade.start-hearts", 8),
-                config.getConfigurationSection("health-upgrade.steps"), level -> level + "하트", plugin.getLogger());
+                config.getConfigurationSection("health-upgrade.steps"),
+                config.getConfigurationSection("health-upgrade.advancements"), level -> level + "하트", plugin.getLogger());
         this.haste = UpgradeTrack.load(HASTE, "성급함", 0,
                 config.getConfigurationSection("haste-upgrade.steps"),
+                config.getConfigurationSection("haste-upgrade.advancements"),
                 level -> level >= 0 && level < HASTE_NAMES.length ? HASTE_NAMES[level] : String.valueOf(level), plugin.getLogger());
         effects.add(new PermanentEffects.Source() {
             @Override
@@ -80,6 +88,17 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
                 return level >= 1 && data.enabled(player, haste) ? level - 1 : null;
             }
         });
+    }
+
+    /** 달성한 도전과제 수 (레시피 해금과 화면에 안 나오는 도전과제는 제외) */
+    public static int completedAdvancements(Player player) {
+        int count = 0;
+        for (var iterator = org.bukkit.Bukkit.advancementIterator(); iterator.hasNext(); ) {
+            Advancement advancement = iterator.next();
+            if (advancement.getKey().getKey().startsWith("recipes/") || advancement.getDisplay() == null) continue;
+            if (player.getAdvancementProgress(advancement).isDone()) count++;
+        }
+        return count;
     }
 
     private UpgradeTrack track(String id) {
@@ -190,6 +209,20 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         }
     }
 
+    /** 창을 연 채로 도전과제를 달성하면 다시 그림 (한꺼번에 여러 개 달성해도 다음 틱에 한 번만). */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onAdvancement(PlayerAdvancementDoneEvent event) {
+        Player player = event.getPlayer();
+        if (!(player.getOpenInventory().getTopInventory().getHolder() instanceof UpgradeMenu)) return;
+        if (!pendingRefresh.add(player.getUniqueId())) return;
+        player.getScheduler().run(plugin, task -> {
+            pendingRefresh.remove(player.getUniqueId());
+            if (player.isOnline() && player.getOpenInventory().getTopInventory().getHolder() instanceof UpgradeMenu menu) {
+                render(player, menu);
+            }
+        }, () -> pendingRefresh.remove(player.getUniqueId()));
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onDrag(InventoryDragEvent event) {
         if (event.getView().getTopInventory().getHolder() instanceof UpgradeMenu) event.setCancelled(true);
@@ -277,6 +310,14 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         for (Requirement requirement : track.requirements(level)) {
             if (progress.getOrDefault(requirement.key(), 0) < requirement.amount()) {
                 fail(player, "재료가 부족합니다");
+                return;
+            }
+        }
+        int needAdvancements = track.advancementsRequired(level);
+        if (needAdvancements > 0) {
+            int have = completedAdvancements(player);
+            if (have < needAdvancements) {
+                fail(player, "도전과제가 부족합니다 (" + have + " / " + needAdvancements + "개)");
                 return;
             }
         }
@@ -403,6 +444,10 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
                 lore.add(text("· ", NamedTextColor.GRAY).append(plain(r.name(), NamedTextColor.GRAY))
                         .append(text(" " + r.amount() + "개", NamedTextColor.GRAY)));
             }
+            int roadmapAdvancements = track.advancementsRequired(target - 1);
+            if (roadmapAdvancements > 0) {
+                lore.add(text("· 도전과제 " + roadmapAdvancements + "개 달성", NamedTextColor.LIGHT_PURPLE));
+            }
             inv.setItem(1 + n, item(dye, healthTab ? target : Math.max(1, target),
                     text(track.name() + " " + track.label(target), color), lore, now));
         }
@@ -447,17 +492,41 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
                 text("재료는 나눠서 넣을 수 있습니다", NamedTextColor.GRAY),
                 text("넣은 재료는 돌려받을 수 없습니다", NamedTextColor.RED)), false));
 
-        boolean complete = !maxed && doneCount == reqs.size();
+        boolean materialsDone = !maxed && doneCount == reqs.size();
+        int needAdvancements = maxed ? 0 : track.advancementsRequired(level);
+        int haveAdvancements = needAdvancements > 0 ? completedAdvancements(player) : 0;
+        boolean advancementsDone = haveAdvancements >= needAdvancements;
+        boolean complete = materialsDone && advancementsDone;
         String step = maxed ? "" : track.label(level) + " → " + track.label(level + 1);
+        if (needAdvancements > 0) {
+            inv.setItem(UpgradeMenu.ADVANCEMENTS, item(Material.KNOWLEDGE_BOOK, 1,
+                    text("도전과제 " + haveAdvancements + " / " + needAdvancements, advancementsDone ? NamedTextColor.GREEN : NamedTextColor.LIGHT_PURPLE),
+                    List.of(Component.empty(),
+                            text("이번 단계는 도전과제를 " + needAdvancements + "개 이상 달성해야 강화할 수 있습니다", NamedTextColor.WHITE),
+                            advancementsDone ? text("조건 충족", NamedTextColor.GREEN)
+                                    : text("앞으로 " + (needAdvancements - haveAdvancements) + "개 더 필요", NamedTextColor.YELLOW),
+                            Component.empty(),
+                            text("재료는 미리 넣어 둘 수 있습니다", NamedTextColor.GRAY),
+                            text("레시피 해금은 세지 않습니다", NamedTextColor.DARK_GRAY)), advancementsDone));
+        }
         if (maxed) {
             inv.setItem(UpgradeMenu.UPGRADE, item(Material.NETHER_STAR, 1, text("최대 단계입니다", NamedTextColor.GRAY), List.of(), false));
+        } else if (materialsDone && !advancementsDone) {
+            inv.setItem(UpgradeMenu.UPGRADE, item(Material.PURPLE_CONCRETE, 1, text("도전과제가 부족합니다", NamedTextColor.LIGHT_PURPLE),
+                    List.of(Component.empty(), text(step, NamedTextColor.WHITE),
+                            text("재료는 모두 넣었습니다", NamedTextColor.GREEN),
+                            text("도전과제 " + haveAdvancements + " / " + needAdvancements + "개", NamedTextColor.YELLOW)), false));
         } else if (complete) {
             inv.setItem(UpgradeMenu.UPGRADE, item(Material.LIME_CONCRETE, 1, text(track.name() + " 강화하기", NamedTextColor.GREEN),
                     List.of(Component.empty(), text(step, NamedTextColor.WHITE), text("클릭해서 강화", NamedTextColor.YELLOW)), true));
         } else {
+            List<Component> lore = new ArrayList<>(List.of(Component.empty(), text(step, NamedTextColor.WHITE),
+                    text("재료 " + doneCount + " / " + reqs.size() + "개 완료", NamedTextColor.WHITE)));
+            if (needAdvancements > 0) {
+                lore.add(text("도전과제 " + haveAdvancements + " / " + needAdvancements + "개", advancementsDone ? NamedTextColor.GREEN : NamedTextColor.YELLOW));
+            }
             inv.setItem(UpgradeMenu.UPGRADE, item(Material.GRAY_CONCRETE, Math.max(1, doneCount), text("재료가 부족합니다", NamedTextColor.RED),
-                    List.of(Component.empty(), text(step, NamedTextColor.WHITE),
-                            text("재료 " + doneCount + " / " + reqs.size() + "개 완료", NamedTextColor.WHITE)), false));
+                    lore, false));
         }
 
         if (nightVision != null) {
