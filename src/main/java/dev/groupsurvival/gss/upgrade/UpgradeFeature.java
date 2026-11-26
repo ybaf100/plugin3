@@ -90,17 +90,6 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         });
     }
 
-    /** 달성한 도전과제 수 (레시피 해금과 화면에 안 나오는 도전과제는 제외) */
-    public static int completedAdvancements(Player player) {
-        int count = 0;
-        for (var iterator = org.bukkit.Bukkit.advancementIterator(); iterator.hasNext(); ) {
-            Advancement advancement = iterator.next();
-            if (advancement.getKey().getKey().startsWith("recipes/") || advancement.getDisplay() == null) continue;
-            if (player.getAdvancementProgress(advancement).isDone()) count++;
-        }
-        return count;
-    }
-
     private UpgradeTrack track(String id) {
         return HASTE.equals(id) ? haste : health;
     }
@@ -313,13 +302,11 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
                 return;
             }
         }
-        int needAdvancements = track.advancementsRequired(level);
-        if (needAdvancements > 0) {
-            int have = completedAdvancements(player);
-            if (have < needAdvancements) {
-                fail(player, "도전과제가 부족합니다 (" + have + " / " + needAdvancements + "개)");
-                return;
-            }
+        AdvancementRequirement advancementRequirement = track.advancementRequirement(level);
+        if (advancementRequirement != null && !advancementRequirement.met(player)) {
+            fail(player, (advancementRequirement.isSpecific() ? "필요한 도전과제를 아직 다 달성하지 않았습니다 (" : "도전과제가 부족합니다 (")
+                    + advancementRequirement.progress(player) + " / " + advancementRequirement.target() + "개)");
+            return;
         }
         int next = level + 1;
         data.setLevel(player, track, next);
@@ -444,9 +431,17 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
                 lore.add(text("· ", NamedTextColor.GRAY).append(plain(r.name(), NamedTextColor.GRAY))
                         .append(text(" " + r.amount() + "개", NamedTextColor.GRAY)));
             }
-            int roadmapAdvancements = track.advancementsRequired(target - 1);
-            if (roadmapAdvancements > 0) {
-                lore.add(text("· 도전과제 " + roadmapAdvancements + "개 달성", NamedTextColor.LIGHT_PURPLE));
+            AdvancementRequirement roadmapAdvancements = track.advancementRequirement(target - 1);
+            if (roadmapAdvancements != null) {
+                if (roadmapAdvancements.isSpecific()) {
+                    lore.add(text("· 도전과제 달성:", NamedTextColor.LIGHT_PURPLE));
+                    for (Advancement advancement : roadmapAdvancements.advancements()) {
+                        lore.add(text("   ", NamedTextColor.LIGHT_PURPLE)
+                                .append(plain(AdvancementRequirement.title(advancement), NamedTextColor.LIGHT_PURPLE)));
+                    }
+                } else {
+                    lore.add(text("· 도전과제 " + roadmapAdvancements.target() + "개 달성", NamedTextColor.LIGHT_PURPLE));
+                }
             }
             inv.setItem(1 + n, item(dye, healthTab ? target : Math.max(1, target),
                     text(track.name() + " " + track.label(target), color), lore, now));
@@ -493,21 +488,33 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
                 text("넣은 재료는 돌려받을 수 없습니다", NamedTextColor.RED)), false));
 
         boolean materialsDone = !maxed && doneCount == reqs.size();
-        int needAdvancements = maxed ? 0 : track.advancementsRequired(level);
-        int haveAdvancements = needAdvancements > 0 ? completedAdvancements(player) : 0;
+        AdvancementRequirement advancementRequirement = maxed ? null : track.advancementRequirement(level);
+        int needAdvancements = advancementRequirement == null ? 0 : advancementRequirement.target();
+        int haveAdvancements = advancementRequirement == null ? 0 : advancementRequirement.progress(player);
         boolean advancementsDone = haveAdvancements >= needAdvancements;
         boolean complete = materialsDone && advancementsDone;
         String step = maxed ? "" : track.label(level) + " → " + track.label(level + 1);
-        if (needAdvancements > 0) {
+        if (advancementRequirement != null) {
+            List<Component> lore = new ArrayList<>();
+            lore.add(Component.empty());
+            if (advancementRequirement.isSpecific()) {
+                lore.add(text("이번 단계는 아래 도전과제를 모두 달성해야 강화할 수 있습니다", NamedTextColor.WHITE));
+                for (Advancement advancement : advancementRequirement.advancements()) {
+                    boolean done = player.getAdvancementProgress(advancement).isDone();
+                    lore.add(text(done ? " ✔ " : " ✘ ", done ? NamedTextColor.GREEN : NamedTextColor.RED)
+                            .append(plain(AdvancementRequirement.title(advancement), done ? NamedTextColor.GREEN : NamedTextColor.GRAY)));
+                }
+            } else {
+                lore.add(text("이번 단계는 도전과제를 " + needAdvancements + "개 이상 달성해야 강화할 수 있습니다", NamedTextColor.WHITE));
+                lore.add(advancementsDone ? text("조건 충족", NamedTextColor.GREEN)
+                        : text("앞으로 " + (needAdvancements - haveAdvancements) + "개 더 필요", NamedTextColor.YELLOW));
+                lore.add(text("레시피 해금은 세지 않습니다", NamedTextColor.DARK_GRAY));
+            }
+            lore.add(Component.empty());
+            lore.add(text("재료는 미리 넣어 둘 수 있습니다", NamedTextColor.GRAY));
             inv.setItem(UpgradeMenu.ADVANCEMENTS, item(Material.KNOWLEDGE_BOOK, 1,
                     text("도전과제 " + haveAdvancements + " / " + needAdvancements, advancementsDone ? NamedTextColor.GREEN : NamedTextColor.LIGHT_PURPLE),
-                    List.of(Component.empty(),
-                            text("이번 단계는 도전과제를 " + needAdvancements + "개 이상 달성해야 강화할 수 있습니다", NamedTextColor.WHITE),
-                            advancementsDone ? text("조건 충족", NamedTextColor.GREEN)
-                                    : text("앞으로 " + (needAdvancements - haveAdvancements) + "개 더 필요", NamedTextColor.YELLOW),
-                            Component.empty(),
-                            text("재료는 미리 넣어 둘 수 있습니다", NamedTextColor.GRAY),
-                            text("레시피 해금은 세지 않습니다", NamedTextColor.DARK_GRAY)), advancementsDone));
+                    lore, advancementsDone));
         }
         if (maxed) {
             inv.setItem(UpgradeMenu.UPGRADE, item(Material.NETHER_STAR, 1, text("최대 단계입니다", NamedTextColor.GRAY), List.of(), false));
@@ -522,7 +529,7 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         } else {
             List<Component> lore = new ArrayList<>(List.of(Component.empty(), text(step, NamedTextColor.WHITE),
                     text("재료 " + doneCount + " / " + reqs.size() + "개 완료", NamedTextColor.WHITE)));
-            if (needAdvancements > 0) {
+            if (advancementRequirement != null) {
                 lore.add(text("도전과제 " + haveAdvancements + " / " + needAdvancements + "개", advancementsDone ? NamedTextColor.GREEN : NamedTextColor.YELLOW));
             }
             inv.setItem(UpgradeMenu.UPGRADE, item(Material.GRAY_CONCRETE, Math.max(1, doneCount), text("재료가 부족합니다", NamedTextColor.RED),

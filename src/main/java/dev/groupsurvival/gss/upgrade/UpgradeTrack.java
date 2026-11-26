@@ -22,10 +22,10 @@ public final class UpgradeTrack {
     private final int max;
     private final Map<Integer, List<Requirement>> steps;
     private final IntFunction<String> label;
-    private final Map<Integer, Integer> advancements;
+    private final Map<Integer, AdvancementRequirement> advancements;
 
     private UpgradeTrack(String id, String name, int start, Map<Integer, List<Requirement>> steps,
-                         Map<Integer, Integer> advancements, IntFunction<String> label) {
+                         Map<Integer, AdvancementRequirement> advancements, IntFunction<String> label) {
         this.id = id;
         this.name = name;
         this.start = start;
@@ -69,16 +69,27 @@ public final class UpgradeTrack {
                 if (level >= start && !list.isEmpty()) steps.put(level, Collections.unmodifiableList(list));
             }
         }
-        Map<Integer, Integer> advancements = new TreeMap<>();
+        Map<Integer, AdvancementRequirement> advancements = new TreeMap<>();
         if (advancementSection != null) {
             for (String levelKey : advancementSection.getKeys(false)) {
+                int level;
                 try {
-                    int level = Integer.parseInt(levelKey.trim());
-                    int count = advancementSection.getInt(levelKey, 0);
-                    if (count > 0) advancements.put(level, count);
+                    level = Integer.parseInt(levelKey.trim());
                 } catch (NumberFormatException e) {
                     logger.warning("[" + name + " 강화] 도전과제 조건의 단계 번호가 숫자가 아님: " + levelKey);
+                    continue;
                 }
+                AdvancementRequirement requirement;
+                if (advancementSection.isList(levelKey)) {
+                    List<String> missing = new ArrayList<>();
+                    requirement = AdvancementRequirement.ofKeys(advancementSection.getStringList(levelKey), missing);
+                    for (String key : missing) {
+                        logger.warning("[" + name + " 강화] " + level + "단계: 없는 도전과제 " + key);
+                    }
+                } else {
+                    requirement = AdvancementRequirement.ofCount(advancementSection.getInt(levelKey, 0));
+                }
+                if (!requirement.isEmpty()) advancements.put(level, requirement);
             }
         }
         return new UpgradeTrack(id, name, start, steps, advancements, label);
@@ -104,9 +115,9 @@ public final class UpgradeTrack {
         return steps.getOrDefault(level, List.of());
     }
 
-    /** level -> level+1 강화에 필요한 도전과제 수 (없으면 0) */
-    public int advancementsRequired(int level) {
-        return advancements.getOrDefault(level, 0);
+    /** level -> level+1 강화의 도전과제 조건 (없으면 null) */
+    public AdvancementRequirement advancementRequirement(int level) {
+        return advancements.get(level);
     }
 
     public String label(int level) {

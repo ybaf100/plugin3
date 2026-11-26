@@ -140,19 +140,28 @@ LANG=C.UTF-8 java -jar paper.jar --nogui
 재료표는 `config.yml`의 `health-upgrade`, `haste-upgrade`에서 고칠 수 있습니다 ([설정](#설정-configyml) 참고).
 
 #### 도전과제 조건
-중요한 단계는 달성한 도전과제 수가 모자라면 강화할 수 없습니다.
+중요한 단계는 도전과제 조건을 채워야 강화할 수 있습니다.
+
+**체력: 전체 도전과제 개수** (레시피 해금 제외, 26.3 기준 전체 126개)
 
 | 시점 | 필요한 도전과제 |
 |---|---|
-| 체력 10 → 11하트 (기본 체력 10하트를 넘어설 때) | 15개 |
-| 성급함 해금 | 20개 |
-| 성급함 I → II | 40개 |
+| 10 → 11하트 (기본 체력 10하트를 넘어설 때) | 15개 |
+| 15 → 16하트 | 40개 |
+| 20 → 21하트 | 70개 |
+| 22 → 23하트 (최대) | 100개 |
 
-- 도전과제는 레시피 해금을 빼고 셉니다 (26.3 기준 전체 126개).
-- 재료는 조건을 채우기 전에도 미리 넣어 둘 수 있습니다.
-- 강화 창 아랫줄의 지식의 책에 "도전과제 12 / 15"처럼 진행도가 나오고, 로드맵의 각 단계 설명에도 조건이 표시됩니다.
+**성급함: 광질 도전과제를 모두 달성**
+
+| 시점 | 필요한 도전과제 |
+|---|---|
+| 해금 | Stone Age (돌 캐기), Getting an Upgrade (돌 곡괭이), Acquire Hardware (철 제련), Isn't It Iron Pick (철 곡괭이), Diamonds! (다이아몬드) |
+| I → II | Ice Bucket Challenge (흑요석), Hidden in the Depths (고대 잔해) |
+
+- 재료는 조건을 채우기 전에도 미리 넣어 둘 수 있습니다. 재료를 다 넣어도 조건이 모자라면 강화 버튼이 보라색으로 남습니다.
+- 강화 창 아랫줄의 지식의 책에 진행도가 나옵니다. 개수형은 "도전과제 12 / 15", 지정형은 도전과제마다 ✔/✘로 표시됩니다. 로드맵의 각 단계 설명에도 조건이 표시됩니다.
 - 창을 연 채로 도전과제를 달성하면 창이 바로 갱신됩니다.
-- 다른 단계에도 조건을 걸 수 있습니다: `health-upgrade.advancements`, `haste-upgrade.advancements`에 `"단계": 개수`를 추가하세요.
+- 조건은 `health-upgrade.advancements`, `haste-upgrade.advancements`에서 바꾸거나 다른 단계에 추가할 수 있습니다. `"단계": 개수`(전체 개수) 또는 `"단계": [도전과제 키 목록]`(모두 달성) 형식입니다.
 
 ### 영구 효과 (야간투시 · 성급함)
 - 강화 창 아랫줄 스위치로 둘 다 켜고 끌 수 있습니다. 야간투시는 `/nv`로도 됩니다.
@@ -269,9 +278,9 @@ LANG=C.UTF-8 java -jar paper.jar --nogui
 | `safe-zone.ender-chest.enabled` / `x` / `y` / `z` | `true` / `0` / 자동 / `0` | 고정 엔더상자 위치 (`y`를 비우면 첫 실행 때 지면 위에 놓고 저장) |
 | `health-upgrade.start-hearts` | `8` | 시작 하트 |
 | `health-upgrade.steps` | 위 표 | `"현재 하트": { 아이템: 개수 }`. 마지막 단계 다음이 최대 하트 |
-| `health-upgrade.advancements` | `"10": 15` | `"현재 하트": 필요한 도전과제 수` |
+| `health-upgrade.advancements` | `10: 15, 15: 40, 20: 70, 22: 100` | `"현재 하트": 개수` 또는 `"현재 하트": [도전과제 키 목록]` |
 | `haste-upgrade.steps` | 위 표 | `"현재 단계": { 아이템: 개수 }` |
-| `haste-upgrade.advancements` | `"0": 20`, `"1": 40` | `"현재 단계": 필요한 도전과제 수` |
+| `haste-upgrade.advancements` | 광질 도전과제 목록 | `"현재 단계": 개수` 또는 `"현재 단계": [도전과제 키 목록]` |
 | `anonymity.anonymous-name` | `"익명"` | 다른 플레이어에게 보이는 이름 |
 | `anonymity.visibility-range` | `48` | 이 거리(블록) 안의 플레이어만 전송 |
 | `anonymity.hide-server-list-players` | `true` | 서버 목록 인원 숨김 |

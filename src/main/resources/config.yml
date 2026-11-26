@@ -123,10 +123,14 @@ health-upgrade:
     "20": { NETHER_WART: 192, GOLDEN_CARROT: 640 }
     "21": { DRAGON_BREATH: 64, TRIDENT: 2 }
     "22": { DIAMOND_BLOCK: 192, CONDUIT: 1, SPONGE: 16 }
-  # 도전과제 조건: "현재 하트": 필요한 도전과제 수 (레시피 해금 제외, 26.3 기준 전체 126개)
-  # 재료는 미리 넣을 수 있지만, 도전과제 수가 모자라면 강화 버튼이 눌리지 않음
+  # 도전과제 조건 (재료는 미리 넣을 수 있지만, 조건을 채워야 강화 버튼이 눌림)
+  #   "현재 하트": 숫자        = 전체 도전과제 중 그 개수 이상 달성 (레시피 해금 제외, 26.3 기준 126개)
+  #   "현재 하트": [키, 키 ...] = 목록의 도전과제를 모두 달성
   advancements:
-    "10": 15   # 10 -> 11하트 (기본 체력 10하트를 넘어설 때)
+    "10": 15    # 10 -> 11하트 (기본 체력 10하트를 넘어설 때)
+    "15": 40    # 15 -> 16하트
+    "20": 70    # 20 -> 21하트
+    "22": 100   # 22 -> 23하트 (최대)
 
 haste-upgrade:
   # 성급함 레벨 0(해금 안 함) -> I -> II. 죽어도 다시 지급되는 영구 효과, 창에서 켜고 끌 수 있음
@@ -141,10 +145,17 @@ haste-upgrade:
       COPPER_INGOT: 64
       AMETHYST_SHARD: 64
     "1": { RECOVERY_COMPASS: 1, LODESTONE: 1, DRAGON_HEAD: 1 }
-  # 도전과제 조건: "현재 단계": 필요한 도전과제 수
+  # 도전과제 조건: 광질 관련 도전과제를 모두 달성해야 함 (형식은 health-upgrade.advancements 와 같음)
   advancements:
-    "0": 20    # 성급함 해금
-    "1": 40    # 성급함 I -> II
+    "0":                                  # 성급함 해금
+      - minecraft:story/mine_stone        # 석기 시대 (돌 캐기)
+      - minecraft:story/upgrade_tools     # 더 좋은 도구로 (돌 곡괭이)
+      - minecraft:story/smelt_iron        # 철 제련
+      - minecraft:story/iron_tools        # 철 곡괭이
+      - minecraft:story/mine_diamond      # 다이아몬드!
+    "1":                                  # 성급함 I -> II
+      - minecraft:story/form_obsidian     # 얼음 양동이 챌린지 (흑요석)
+      - minecraft:nether/obtain_ancient_debris  # 깊은 곳에 숨겨진 것 (고대 잔해)
 
 anonymity:
   # 다른 플레이어에게 보이는 이름 (이름표는 항상 숨김)
