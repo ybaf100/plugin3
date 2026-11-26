@@ -12,9 +12,8 @@ import dev.groupsurvival.gss.feature.ElytraFeature;
 import dev.groupsurvival.gss.feature.NightVisionFeature;
 import dev.groupsurvival.gss.integration.LunarIntegration;
 import dev.groupsurvival.gss.packet.AnonymityPacketListener;
-import dev.groupsurvival.gss.packet.CoordinateOffsetListener;
 import dev.groupsurvival.gss.packet.HiddenWorlds;
-import dev.groupsurvival.gss.packet.OffsetManager;
+import dev.groupsurvival.gss.packet.ReducedDebugInfoListener;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -61,18 +60,9 @@ public final class GroupSurvivalSystem extends JavaPlugin {
         packetListeners.add(events.registerListener(
                 new AnonymityPacketListener(anonymity), PacketListenerPriority.NORMAL));
 
-        boolean offsetEnabled = getConfig().getBoolean("coordinates.offset.enabled", false);
-        boolean reducedDebug = getConfig().getBoolean("coordinates.reduced-debug-info", true);
-        if (offsetEnabled || reducedDebug) {
-            OffsetManager offsets = new OffsetManager(
-                    offsetEnabled,
-                    getConfig().getInt("coordinates.offset.min-chunks", 5000),
-                    getConfig().getInt("coordinates.offset.max-chunks", 40000));
-            CoordinateOffsetListener coords = new CoordinateOffsetListener(offsets, hiddenWorlds, reducedDebug, getLogger());
-            // 서버 -> 클라이언트: 다른 플러그인이 실제 좌표를 보도록 가장 마지막에 변환
-            packetListeners.add(events.registerListener(coords.outbound(), PacketListenerPriority.HIGHEST));
-            // 클라이언트 -> 서버: 다른 플러그인이 실제 좌표를 보도록 가장 먼저 복원
-            packetListeners.add(events.registerListener(coords.inbound(), PacketListenerPriority.LOWEST));
+        if (getConfig().getBoolean("coordinates.reduced-debug-info", true)) {
+            packetListeners.add(events.registerListener(
+                    new ReducedDebugInfoListener(hiddenWorlds), PacketListenerPriority.HIGH));
         }
 
         if (apolloPresent && getConfig().getBoolean("lunar.enabled", true)) {
