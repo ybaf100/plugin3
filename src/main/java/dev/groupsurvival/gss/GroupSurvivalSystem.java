@@ -17,6 +17,7 @@ import dev.groupsurvival.gss.packet.AnonymityPacketListener;
 import dev.groupsurvival.gss.packet.CompassTargetListener;
 import dev.groupsurvival.gss.packet.HiddenWorlds;
 import dev.groupsurvival.gss.packet.ReducedDebugInfoListener;
+import dev.groupsurvival.gss.util.FileLog;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -28,10 +29,12 @@ public final class GroupSurvivalSystem extends JavaPlugin {
 
     private final List<PacketListenerCommon> packetListeners = new ArrayList<>();
     private boolean apolloPresent;
+    private FileLog fileLog;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        fileLog = new FileLog(getDataFolder().toPath(), getLogger());
         apolloPresent = Bukkit.getPluginManager().isPluginEnabled("Apollo-Bukkit");
 
         HiddenWorlds hiddenWorlds = new HiddenWorlds(this);
@@ -49,7 +52,7 @@ public final class GroupSurvivalSystem extends JavaPlugin {
 
         register(new DragonFeature(this));
         register(new CommunicationFeature(this));
-        register(new HandSwapActionFeature(this));
+        register(new HandSwapActionFeature(this, fileLog));
 
         SafeZoneFeature safeZone = new SafeZoneFeature(this);
         register(safeZone);
@@ -98,6 +101,7 @@ public final class GroupSurvivalSystem extends JavaPlugin {
             }
         }
         packetListeners.clear();
+        if (fileLog != null) fileLog.close();
     }
 
     private void register(Listener listener) {

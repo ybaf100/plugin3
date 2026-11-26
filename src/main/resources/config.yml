@@ -61,13 +61,18 @@ death-message: "&c&l사람이 죽었다."
 compass:
   # 오버월드에서 나침반이 항상 0,0 을 가리킴 (네더/엔드는 바닐라처럼 빙글빙글)
   point-to-origin: true
-  # 일반 나침반을 손에 들고 F(손 바꾸기) = 현재 좌표를 채팅으로 확인, 나침반 1개 소모
+  # 일반 나침반을 손에 들고 F(손 바꾸기) = 현재 좌표를 채팅으로 확인 (나침반당 1회)
+  # 확인한 나침반에는 아래 설명이 붙고, 다시 F 를 누르면 안내 메시지만 나옴
   # (자석석 나침반, 회복 나침반은 해당 없음)
+  # 기록: logs/시스템/나침반좌표확인.log, logs/시스템/나침반좌표확인실패/통합.log, .../<플레이어>.log
   coordinate-check: true
-  coordinate-message: "&e[나침반] &f현재 좌표: &aX %x&f, &aY %y&f, &aZ %z"
+  checked-lore: "&7좌표 확인이 완료된 나침반"
+  coordinate-message: "&a%x%, %y%, %z%"
+  already-checked-message: "&7이미 좌표 확인이 완료된 나침반입니다."
 
 wool-to-banner:
   # 양털(모든 색)을 손에 들고 F = 들고 있는 양털 개수만큼 하얀 현수막으로 변환 (1:1)
+  # 기록: logs/시스템/배너.log
   enabled: true
 
 safe-zone:
