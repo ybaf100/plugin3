@@ -228,6 +228,12 @@ LANG=C.UTF-8 java -jar paper.jar --nogui
 - 어떻게든 겉날개를 얻었더라도 **활공할 수 없습니다** (glider 속성이 있는 모든 아이템 포함).
 - 허용/금지는 콘솔의 `gss elytra on|off`로만 바꿉니다. 자동으로 풀리지 않습니다.
 
+### 플레이어 머리
+- 다른 플레이어에게 죽으면 그 사람의 머리가 떨어집니다 (화살 등 원거리 처치 포함).
+- 머리 이름은 바닐라처럼 "닉네임의 머리"이고 스킨도 그대로입니다. **닉네임이 드러납니다.**
+- 낙사, 몹, `/kill` 등 플레이어가 아닌 원인으로 죽으면 떨어지지 않습니다.
+- `player-head.anonymous: true`로 바꾸면 닉네임 없이 스킨만 담습니다.
+
 ### 엔더드래곤
 - 최대 체력이 **5배** (200 → 1000)입니다. 다시 소환한 드래곤에도 적용됩니다.
 
@@ -270,6 +276,8 @@ LANG=C.UTF-8 java -jar paper.jar --nogui
 | `communication.signs.zone-radius-chunks` | `1` | 표지판 허용 구역 반경 (1 = 3×3 청크) |
 | `communication.signs.replacement-overworld` | 4줄 | 오버월드 금지 구역 안내 문구 |
 | `communication.signs.replacement-other-dimensions` | 4줄 | 네더/엔드 안내 문구 |
+| `player-head.enabled` | `true` | 플레이어에게 죽으면 머리 드롭 |
+| `player-head.anonymous` | `false` | `true`면 머리에 닉네임을 넣지 않음 |
 | `death-message` | `"&c&l사람이 죽었다."` | 통일 데스 메시지 (& 색 코드) |
 | `compass.point-to-origin` | `true` | 오버월드 나침반 0,0 고정 |
 | `compass.coordinate-check` | `true` | 나침반 + F 좌표 확인 |

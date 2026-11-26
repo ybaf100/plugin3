@@ -13,6 +13,7 @@ import dev.groupsurvival.gss.feature.DragonFeature;
 import dev.groupsurvival.gss.feature.ElytraFeature;
 import dev.groupsurvival.gss.feature.HandSwapActionFeature;
 import dev.groupsurvival.gss.feature.NightVisionFeature;
+import dev.groupsurvival.gss.feature.PlayerHeadFeature;
 import dev.groupsurvival.gss.feature.SafeZoneFeature;
 import dev.groupsurvival.gss.integration.LunarIntegration;
 import dev.groupsurvival.gss.packet.AnonymityPacketListener;
@@ -68,6 +69,7 @@ public final class GroupSurvivalSystem extends JavaPlugin {
         register(new CommunicationFeature(this));
         register(new HandSwapActionFeature(this, fileLog));
         register(new ActivityLogFeature(fileLog));
+        if (getConfig().getBoolean("player-head.enabled", true)) register(new PlayerHeadFeature(this));
 
         SafeZoneFeature safeZone = new SafeZoneFeature(this);
         register(safeZone);
