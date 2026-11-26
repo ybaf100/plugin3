@@ -30,6 +30,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
@@ -61,6 +62,8 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
     private final UpgradeTrack health;
     private final UpgradeTrack haste;
     private final Set<UUID> pendingRefresh = ConcurrentHashMap.newKeySet();
+    /** 이미 "준비 완료"를 알린 단계 (트랙:단계). 같은 단계에서는 한 번만 알림 */
+    private final Map<UUID, Set<String>> readyNotified = new ConcurrentHashMap<>();
 
     public UpgradeFeature(JavaPlugin plugin, FileLog log, PermanentEffects effects, NightVisionFeature nightVision) {
         this.plugin = plugin;
@@ -159,7 +162,51 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(PlayerJoinEvent event) {
-        applyHealth(event.getPlayer());
+        Player player = event.getPlayer();
+        applyHealth(player);
+        // 접속했을 때 이미 준비된 강화가 있으면 알려줌
+        player.getScheduler().runDelayed(plugin, task -> {
+            if (player.isOnline()) notifyReady(player);
+        }, null, 60L);
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        readyNotified.remove(event.getPlayer().getUniqueId());
+        pendingRefresh.remove(event.getPlayer().getUniqueId());
+    }
+
+    // ───────────────────────── 준비 완료 알림 ─────────────────────────
+
+    /** 재료와 도전과제 조건이 모두 채워져 버튼만 누르면 되는 상태인지 */
+    private boolean isReady(Player player, UpgradeTrack track) {
+        int level = data.level(player, track);
+        if (level >= track.max()) return false;
+        Map<String, Integer> progress = data.progress(player, track);
+        for (Requirement requirement : track.requirements(level)) {
+            if (progress.getOrDefault(requirement.key(), 0) < requirement.amount()) return false;
+        }
+        AdvancementRequirement advancementRequirement = track.advancementRequirement(level);
+        return advancementRequirement == null || advancementRequirement.met(player);
+    }
+
+    /**
+     * 강화 준비가 끝난 트랙이 있으면 액션바로 알림. 해금/강화는 자동으로 되지 않고 반드시 버튼을 눌러야 함.
+     * 같은 단계에서는 한 번만 알림 (재접속하면 다시 알림).
+     */
+    private void notifyReady(Player player) {
+        Set<String> notified = readyNotified.computeIfAbsent(player.getUniqueId(), id -> ConcurrentHashMap.newKeySet());
+        for (UpgradeTrack track : List.of(health, haste)) {
+            if (!isReady(player, track)) continue;
+            int level = data.level(player, track);
+            if (!notified.add(track.id() + ":" + level)) continue;
+            String action = track == haste && level == 0 ? "해금" : "강화";
+            String command = track == haste ? "/성급함강화" : "/체력강화";
+            player.sendActionBar(Component.text(track.name() + " " + action + " 준비 완료! ", NamedTextColor.GREEN)
+                    .append(Component.text(command + " 창에서 버튼을 눌러 " + action + "하세요", NamedTextColor.YELLOW)));
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.8f, 1.6f);
+            return; // 한 번에 하나만 (액션바가 겹치지 않게)
+        }
     }
 
     @EventHandler
@@ -198,17 +245,21 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         }
     }
 
-    /** 창을 연 채로 도전과제를 달성하면 다시 그림 (한꺼번에 여러 개 달성해도 다음 틱에 한 번만). */
+    /**
+     * 도전과제를 달성하면: 조건이 채워졌는지 확인해 "준비 완료"를 알리고, 창이 열려 있으면 다시 그림.
+     * 한꺼번에 여러 개 달성해도 다음 틱에 한 번만 처리.
+     */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onAdvancement(PlayerAdvancementDoneEvent event) {
         Player player = event.getPlayer();
-        if (!(player.getOpenInventory().getTopInventory().getHolder() instanceof UpgradeMenu)) return;
         if (!pendingRefresh.add(player.getUniqueId())) return;
         player.getScheduler().run(plugin, task -> {
             pendingRefresh.remove(player.getUniqueId());
-            if (player.isOnline() && player.getOpenInventory().getTopInventory().getHolder() instanceof UpgradeMenu menu) {
+            if (!player.isOnline()) return;
+            if (player.getOpenInventory().getTopInventory().getHolder() instanceof UpgradeMenu menu) {
                 render(player, menu);
             }
+            notifyReady(player);
         }, () -> pendingRefresh.remove(player.getUniqueId()));
     }
 
@@ -286,6 +337,7 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
                 .append(requirement.name())
                 .append(Component.text(" " + take + "개를 넣었습니다 (" + (have + take) + " / " + requirement.amount() + ")")));
         render(player, menu);
+        notifyReady(player); // 마지막 재료였다면 "준비 완료" 알림 (넣은 메시지 대신 표시됨)
     }
 
     private void upgrade(Player player, UpgradeMenu menu) {
