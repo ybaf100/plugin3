@@ -26,6 +26,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.advancement.Advancement;
+import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.entity.SpawnerSpawnEvent;
@@ -166,6 +169,15 @@ public final class SilverfishFeature implements Listener {
         }
     }
 
+    /** 도전과제 "몬스터 사냥꾼"(모든 몬스터 처치)에서 좀벌레 조건을 미리 채워 달성 가능하게 유지 */
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        Advancement advancement = plugin.getServer().getAdvancement(NamespacedKey.minecraft("adventure/kill_all_mobs"));
+        if (advancement == null) return;
+        AdvancementProgress progress = event.getPlayer().getAdvancementProgress(advancement);
+        if (progress.getRemainingCriteria().contains("minecraft:silverfish")) progress.awardCriteria("minecraft:silverfish");
+    }
+
     // ───────────────────────── 벌레먹음 상태이상 · 물약 ─────────────────────────
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -197,13 +209,10 @@ public final class SilverfishFeature implements Listener {
         }
     }
 
+    /** 청크가 로드되는 즉시 정리 (플레이어에게 보내지기 전, 미리 생성 중 바로 언로드되는 청크도 빠짐없이) */
     @EventHandler
     public void onChunkLoad(ChunkLoadEvent event) {
-        Chunk chunk = event.getChunk();
-        // 로드 이벤트 안에서 블록을 바꾸지 않고 다음 틱에 처리
-        plugin.getServer().getScheduler().runTask(plugin, () -> {
-            if (chunk.isLoaded()) clean(chunk);
-        });
+        clean(event.getChunk());
     }
 
     private void clean(Chunk chunk) {
@@ -215,10 +224,12 @@ public final class SilverfishFeature implements Listener {
             if (state instanceof CreatureSpawner spawner && hasSilverfish(spawner)) {
                 fixSpawner(spawner);
                 spawners++;
+                if (debug) plugin.getLogger().info("[DBG] spawner at " + state.getX() + " " + state.getY() + " " + state.getZ());
             } else if (state instanceof TrialSpawner trial && (hasSilverfish(trial.getNormalConfiguration())
                     || hasSilverfish(trial.getOminousConfiguration()))) {
                 fixTrialSpawner(trial);
                 spawners++;
+                if (debug) plugin.getLogger().info("[DBG] trial spawner at " + state.getX() + " " + state.getY() + " " + state.getZ());
             }
         }
         if (debug && spawners > 0) {
@@ -236,28 +247,24 @@ public final class SilverfishFeature implements Listener {
             markClean(chunk);
             return;
         }
-        ChunkSnapshot snapshot = chunk.getChunkSnapshot();
+        ChunkSnapshot snapshot = chunk.getChunkSnapshot(false, false, false);
         World world = chunk.getWorld();
         int minY = world.getMinHeight(), maxY = world.getMaxHeight();
-        int baseX = chunk.getX() << 4, baseZ = chunk.getZ() << 4;
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            List<int[]> found = new ArrayList<>();
-            for (int y = minY; y < maxY; y++) {
-                for (int x = 0; x < 16; x++) {
-                    for (int z = 0; z < 16; z++) {
-                        if (INFESTED.containsKey(snapshot.getBlockType(x, y, z))) found.add(new int[]{x, y, z});
+        int replaced = 0;
+        for (int y = minY; y < maxY; y++) {
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    if (INFESTED.containsKey(snapshot.getBlockType(x, y, z))) {
+                        replace(chunk.getBlock(x, y, z));
+                        replaced++;
                     }
                 }
             }
-            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                if (!chunk.isLoaded()) return; // 다음에 로드될 때 다시 처리
-                for (int[] pos : found) replace(world.getBlockAt(baseX + pos[0], pos[1], baseZ + pos[2]));
-                markClean(chunk);
-                if (debug) {
-                    plugin.getLogger().info("[DBG] 벌레 먹은 블록 " + found.size() + "개 정리: chunk " + chunk.getX() + "," + chunk.getZ());
-                }
-            });
-        });
+        }
+        markClean(chunk);
+        if (debug) {
+            plugin.getLogger().info("[DBG] 벌레 먹은 블록 " + replaced + "개 정리: chunk " + chunk.getX() + "," + chunk.getZ());
+        }
     }
 
     private void markClean(Chunk chunk) {
