@@ -25,28 +25,63 @@ coordinates:
   reduced-debug-info: true
 
 communication:
-  # 채팅 완전 금지
-  block-chat: true
   # 일반 플레이어가 쓸 수 있는 명령어 (gss.bypass.commands 권한은 무시)
   allowed-commands:
     - nv
   # 책과 깃펜 작성 금지
-  block-books: true
+  block-books: false
   # 모루 이름 변경 금지
-  block-anvil-rename: true
+  block-anvil-rename: false
   # 이름표 사용 금지
-  block-name-tags: true
+  block-name-tags: false
+  local-chat:
+    # 채팅은 반경 안에 있는 플레이어에게만 보임
+    radius: 32
+    # 채팅 앞에 붙는 말머리 (& 색 코드 사용 가능)
+    prefix: "[지역] "
   signs:
-    # 0,0 청크 기준 반경 (1 = 0,0 청크 + 주변 8청크 = 3x3)
+    # 오버월드에서 표지판을 쓸 수 있는 0,0 청크 기준 반경 (1 = 0,0 청크 + 주변 8청크 = 3x3)
     zone-radius-chunks: 1
-    # 표지판 규칙을 적용할 월드. 비워두면 모든 월드
-    worlds: []
-    # 금지 구역에서 표지판을 쓰면 바뀌는 내용 (4줄)
-    replacement:
+    # 오버월드 금지 구역에서 표지판을 쓰면 바뀌는 내용 (4줄)
+    replacement-overworld:
       - "표지판은"
-      - "0,0 근처 청크에서만"
+      - "0,0 근처에서만"
       - "사용이 가능합니다"
       - ""
+    # 네더/엔드에서 표지판을 쓰면 바뀌는 내용 (네더/엔드는 어디서든 불가)
+    replacement-other-dimensions:
+      - "표지판은"
+      - "오버월드에서만"
+      - "사용이 가능합니다"
+      - ""
+
+# 데스 메시지 (모든 사망을 이 문구로 통일, & 색 코드 사용 가능)
+death-message: "&c&l사람이 죽었다."
+
+compass:
+  # 오버월드에서 나침반이 항상 0,0 을 가리킴 (네더/엔드는 바닐라처럼 빙글빙글)
+  point-to-origin: true
+  # 일반 나침반을 손에 들고 F(손 바꾸기) = 현재 좌표를 채팅으로 확인, 나침반 1개 소모
+  # (자석석 나침반, 회복 나침반은 해당 없음)
+  coordinate-check: true
+  coordinate-message: "&e[나침반] &f현재 좌표: &aX %x&f, &aY %y&f, &aZ %z"
+
+wool-to-banner:
+  # 양털(모든 색)을 손에 들고 F = 들고 있는 양털 개수만큼 하얀 현수막으로 변환 (1:1)
+  enabled: true
+
+safe-zone:
+  # 오버월드 0,0 청크와 주변 청크 안에서는 플레이어가 피해를 입지 않음
+  # (블록 부수기/설치, 적대 몹 스폰은 허용)
+  enabled: true
+  radius-chunks: 1
+  ender-chest:
+    # 부술 수 없는 고정 엔더상자
+    enabled: true
+    x: 0
+    z: 0
+    # 비워두면 첫 실행 때 0,0 지면 위에 자동 배치하고 여기에 높이를 저장
+    y:
 
 anonymity:
   # 다른 플레이어에게 보이는 이름 (이름표는 항상 숨김)

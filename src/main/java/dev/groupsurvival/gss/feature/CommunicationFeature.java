@@ -7,9 +7,13 @@ import java.util.Locale;
 import java.util.Set;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -23,47 +27,75 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
- * 모든 통신 수단 차단: 채팅, 명령어(/msg 등), 책, 모루 이름 변경, 이름표.
- * 표지판은 0,0 청크 주변(기본 3x3 청크)에서만 사용 가능.
+ * 통신 제한.
+ * - 채팅: 반경 안에 있는 플레이어에게만 "[지역] <이름> 내용" 형태로 보임 (서명 없는 시스템 메시지 → 신고 불가)
+ * - 명령어: 허용 목록(/nv)만
+ * - 책/모루 이름 변경/이름표: 설정으로 금지 가능 (기본 허용)
+ * - 표지판: 오버월드 0,0 주변 청크에서만, 네더/엔드는 불가
  */
 public final class CommunicationFeature implements Listener {
 
     private static final String BYPASS_COMMANDS = "gss.bypass.commands";
-    private static final String BYPASS_CHAT = "gss.bypass.chat";
+    private static final List<String> DEFAULT_OVERWORLD_SIGN = List.of("표지판은", "0,0 근처에서만", "사용이 가능합니다", "");
+    private static final List<String> DEFAULT_OTHER_SIGN = List.of("표지판은", "오버월드에서만", "사용이 가능합니다", "");
 
-    private final boolean blockChat;
+    private final JavaPlugin plugin;
     private final boolean blockBooks;
     private final boolean blockAnvil;
     private final boolean blockNameTags;
     private final Set<String> allowedCommands = new HashSet<>();
+    private final double chatRadiusSq;
+    private final Component chatPrefix;
     private final int signRadius;
-    private final Set<String> signWorlds = new HashSet<>();
-    private final List<Component> signReplacement;
+    private final List<Component> overworldSign;
+    private final List<Component> otherDimensionSign;
 
     public CommunicationFeature(JavaPlugin plugin) {
+        this.plugin = plugin;
         var config = plugin.getConfig();
-        this.blockChat = config.getBoolean("communication.block-chat", true);
-        this.blockBooks = config.getBoolean("communication.block-books", true);
-        this.blockAnvil = config.getBoolean("communication.block-anvil-rename", true);
-        this.blockNameTags = config.getBoolean("communication.block-name-tags", true);
+        this.blockBooks = config.getBoolean("communication.block-books", false);
+        this.blockAnvil = config.getBoolean("communication.block-anvil-rename", false);
+        this.blockNameTags = config.getBoolean("communication.block-name-tags", false);
         for (String command : config.getStringList("communication.allowed-commands")) {
             allowedCommands.add(command.toLowerCase(Locale.ROOT));
         }
+        double radius = Math.max(1, config.getDouble("communication.local-chat.radius", 32));
+        this.chatRadiusSq = radius * radius;
+        this.chatPrefix = LegacyComponentSerializer.legacyAmpersand()
+                .deserialize(config.getString("communication.local-chat.prefix", "[지역] "));
         this.signRadius = Math.max(0, config.getInt("communication.signs.zone-radius-chunks", 1));
-        for (String world : config.getStringList("communication.signs.worlds")) {
-            signWorlds.add(world.toLowerCase(Locale.ROOT));
-        }
-        List<String> lines = config.getStringList("communication.signs.replacement");
-        if (lines.isEmpty()) lines = List.of("표지판은", "0,0 근처 청크에서만", "사용이 가능합니다", "");
-        this.signReplacement = lines.stream().limit(4).map(line -> (Component) Component.text(line)).toList();
+        this.overworldSign = lines(config.getStringList("communication.signs.replacement-overworld"), DEFAULT_OVERWORLD_SIGN);
+        this.otherDimensionSign = lines(config.getStringList("communication.signs.replacement-other-dimensions"), DEFAULT_OTHER_SIGN);
     }
 
-    // ── 채팅 ──
-    @EventHandler(priority = EventPriority.LOWEST)
+    private static List<Component> lines(List<String> configured, List<String> fallback) {
+        List<String> source = configured.isEmpty() ? fallback : configured;
+        return source.stream().limit(4).map(line -> (Component) Component.text(line)).toList();
+    }
+
+    // ── 근처 채팅 ──
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onChat(AsyncChatEvent event) {
-        if (!blockChat || event.getPlayer().hasPermission(BYPASS_CHAT)) return;
         event.setCancelled(true);
-        event.getPlayer().sendActionBar(Component.text("채팅은 사용할 수 없습니다.", NamedTextColor.RED));
+        Player sender = event.getPlayer();
+        Component line = Component.empty()
+                .append(chatPrefix)
+                .append(Component.text("<"))
+                .append(sender.name())
+                .append(Component.text("> "))
+                .append(event.message());
+        // 위치 확인은 메인 스레드에서
+        sender.getScheduler().run(plugin, task -> {
+            if (!sender.isOnline()) return;
+            Location origin = sender.getLocation();
+            World world = origin.getWorld();
+            for (Player viewer : plugin.getServer().getOnlinePlayers()) {
+                if (viewer.getWorld() == world && viewer.getLocation().distanceSquared(origin) <= chatRadiusSq) {
+                    viewer.sendMessage(line);
+                }
+            }
+            plugin.getServer().getConsoleSender().sendMessage(line);
+        }, null);
     }
 
     // ── 명령어 ──
@@ -76,8 +108,7 @@ public final class CommunicationFeature implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void onCommand(PlayerCommandPreprocessEvent event) {
         if (event.getPlayer().hasPermission(BYPASS_COMMANDS)) return;
-        String message = event.getMessage();
-        String label = message.substring(1).split(" ", 2)[0];
+        String label = event.getMessage().substring(1).split(" ", 2)[0];
         if (!allowedCommands.contains(baseLabel(label))) {
             event.setCancelled(true);
             event.getPlayer().sendActionBar(Component.text("사용할 수 없는 명령어입니다.", NamedTextColor.RED));
@@ -103,11 +134,11 @@ public final class CommunicationFeature implements Listener {
     public void onAnvil(PrepareAnvilEvent event) {
         if (!blockAnvil) return;
         String rename = event.getView().getRenameText();
-        if (rename == null || rename.isBlank()) return; // 이름 제거/변경 없음은 허용
+        if (rename == null || rename.isBlank()) return;
         ItemStack first = event.getInventory().getFirstItem();
         if (first != null && !first.getType().isAir()) {
             String current = PlainTextComponentSerializer.plainText().serialize(first.effectiveName());
-            if (current.equals(rename)) return; // 이름을 바꾸지 않은 수리/인챈트
+            if (current.equals(rename)) return;
         }
         event.setResult(null);
     }
@@ -127,10 +158,15 @@ public final class CommunicationFeature implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onSign(SignChangeEvent event) {
         Block block = event.getBlock();
-        if (!signWorlds.isEmpty() && !signWorlds.contains(block.getWorld().getName().toLowerCase(Locale.ROOT))) return;
-        int chunkX = block.getX() >> 4;
-        int chunkZ = block.getZ() >> 4;
-        if (Math.abs(chunkX) <= signRadius && Math.abs(chunkZ) <= signRadius) return;
+        List<Component> replacement;
+        if (block.getWorld().getEnvironment() == World.Environment.NORMAL) {
+            int chunkX = block.getX() >> 4;
+            int chunkZ = block.getZ() >> 4;
+            if (Math.abs(chunkX) <= signRadius && Math.abs(chunkZ) <= signRadius) return;
+            replacement = overworldSign;
+        } else {
+            replacement = otherDimensionSign;
+        }
 
         boolean hasText = false;
         for (Component line : event.lines()) {
@@ -141,7 +177,7 @@ public final class CommunicationFeature implements Listener {
         }
         if (!hasText) return;
         for (int i = 0; i < 4; i++) {
-            event.line(i, i < signReplacement.size() ? signReplacement.get(i) : Component.empty());
+            event.line(i, i < replacement.size() ? replacement.get(i) : Component.empty());
         }
     }
 }

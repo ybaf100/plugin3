@@ -9,9 +9,12 @@ import dev.groupsurvival.gss.feature.ClientCheckFeature;
 import dev.groupsurvival.gss.feature.CommunicationFeature;
 import dev.groupsurvival.gss.feature.DragonFeature;
 import dev.groupsurvival.gss.feature.ElytraFeature;
+import dev.groupsurvival.gss.feature.HandSwapActionFeature;
 import dev.groupsurvival.gss.feature.NightVisionFeature;
+import dev.groupsurvival.gss.feature.SafeZoneFeature;
 import dev.groupsurvival.gss.integration.LunarIntegration;
 import dev.groupsurvival.gss.packet.AnonymityPacketListener;
+import dev.groupsurvival.gss.packet.CompassTargetListener;
 import dev.groupsurvival.gss.packet.HiddenWorlds;
 import dev.groupsurvival.gss.packet.ReducedDebugInfoListener;
 import java.util.ArrayList;
@@ -46,6 +49,11 @@ public final class GroupSurvivalSystem extends JavaPlugin {
 
         register(new DragonFeature(this));
         register(new CommunicationFeature(this));
+        register(new HandSwapActionFeature(this));
+
+        SafeZoneFeature safeZone = new SafeZoneFeature(this);
+        register(safeZone);
+        safeZone.start();
 
         AnonymityFeature anonymity = new AnonymityFeature(this);
         register(anonymity);
@@ -60,6 +68,10 @@ public final class GroupSurvivalSystem extends JavaPlugin {
         packetListeners.add(events.registerListener(
                 new AnonymityPacketListener(anonymity), PacketListenerPriority.NORMAL));
 
+        if (getConfig().getBoolean("compass.point-to-origin", true)) {
+            packetListeners.add(events.registerListener(
+                    new CompassTargetListener(hiddenWorlds), PacketListenerPriority.HIGH));
+        }
         if (getConfig().getBoolean("coordinates.reduced-debug-info", true)) {
             packetListeners.add(events.registerListener(
                     new ReducedDebugInfoListener(hiddenWorlds), PacketListenerPriority.HIGH));

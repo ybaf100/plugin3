@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.GameRules;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -24,7 +25,7 @@ import org.bukkit.scoreboard.Team;
 
 /**
  * 서버에 누가 있는지 알 수 없게 함.
- * - 입장/퇴장/사망/발전과제 메시지 제거, 서버 목록 인원 숨김, 위치 표시줄(locator bar) 끔
+ * - 입장/퇴장/발전과제 메시지 제거, 데스 메시지는 고정 문구로 통일, 서버 목록 인원 숨김, 위치 표시줄(locator bar) 끔
  * - 가까이(visibility-range) 있는 플레이어만 클라이언트에 전송, 나머지는 완전히 숨김
  * - 이름은 익명으로 바뀌고(패킷 단계) 이름표는 항상 숨김, 스킨은 그대로 보임
  */
@@ -37,6 +38,7 @@ public final class AnonymityFeature implements Listener {
     private final double showRangeSq;
     private final double hideRangeSq;
     private final boolean hideServerList;
+    private final Component deathMessage;
     /** viewer -> 이 viewer 에게 현재 보여주고 있는 플레이어들 (패킷 리스너에서 동시 접근) */
     private final Map<UUID, Set<UUID>> shown = new ConcurrentHashMap<>();
 
@@ -49,6 +51,8 @@ public final class AnonymityFeature implements Listener {
         this.showRangeSq = range * range;
         this.hideRangeSq = (range + 8) * (range + 8);
         this.hideServerList = plugin.getConfig().getBoolean("anonymity.hide-server-list-players", true);
+        this.deathMessage = LegacyComponentSerializer.legacyAmpersand()
+                .deserialize(plugin.getConfig().getString("death-message", "&c&l사람이 죽었다."));
     }
 
     public String anonymousName() {
@@ -147,7 +151,10 @@ public final class AnonymityFeature implements Listener {
     // ── 메시지 ──
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onDeath(PlayerDeathEvent event) {
+        // 바닐라 데스 메시지(이름/원인 노출)는 없애고, 고정 문구를 직접 전체 공지
         event.deathMessage(null);
+        event.deathScreenMessageOverride(deathMessage);
+        plugin.getServer().broadcast(deathMessage);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)

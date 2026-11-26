@@ -23,9 +23,6 @@ permissions:
   gss.bypass.commands:
     description: 명령어 제한 무시 (관리자용)
     default: op
-  gss.bypass.chat:
-    description: 채팅 금지 무시
-    default: false
   gss.bypass.clientcheck:
     description: 클라이언트 검사 무시
     default: false
