@@ -5,21 +5,27 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 
 /**
- * plugins/GroupSurvivalSystem/logs/ 아래에 로그 파일을 남김 (Skript 의 log ... to "파일" 과 같은 역할).
+ * plugins/GroupSurvivalSystem/logs/ 아래에 로그 파일을 남김 (예전 Skript 의 log ... to "파일" 과 같은 구조).
+ * 한 줄 형식 (한국시간 기준):
+ *   [2026-11-26] 17:30:45에 이름가 x: 1752, y: 95, z: -1186, yaw: -92, pitch: 11 in 'world'에서 행동
  * 파일 쓰기는 별도 스레드 하나에서 순서대로 처리.
  */
 public final class FileLog {
 
-    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final ZoneId KOREA = ZoneId.of("Asia/Seoul");
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private final Path root;
     private final Logger logger;
@@ -34,13 +40,27 @@ public final class FileLog {
         this.logger = logger;
     }
 
-    public static String now() {
-        return LocalDateTime.now().format(TIME);
+    /** "[날짜] 시각에 " (한국시간) */
+    private static String timestamp() {
+        ZonedDateTime now = ZonedDateTime.now(KOREA);
+        return "[" + now.format(DATE) + "] " + now.format(TIME) + "에 ";
     }
 
-    public static String format(Location location) {
-        return String.format(java.util.Locale.ROOT, "%s (%.2f, %.2f, %.2f)", location.getWorld() == null ? "?" : location.getWorld().getName(),
-                location.getX(), location.getY(), location.getZ());
+    /** Skript 위치 형식 (예: x: 1752, y: 95, z: -1186, yaw: -92, pitch: 11 in 'world') */
+    public static String location(Location loc) {
+        return "x: " + Math.round(loc.getX()) + ", y: " + Math.round(loc.getY()) + ", z: " + Math.round(loc.getZ())
+                + ", yaw: " + Math.round(loc.getYaw()) + ", pitch: " + Math.round(loc.getPitch())
+                + " in '" + (loc.getWorld() == null ? "?" : loc.getWorld().getName()) + "'";
+    }
+
+    /** "[날짜] 시각에 이름가 위치에서 행동" */
+    public static String line(Player player, Location loc, String action) {
+        return timestamp() + player.getName() + "가 " + location(loc) + "에서 " + action;
+    }
+
+    /** "[날짜] 시각에 이름가 행동" (좌표 제외) */
+    public static String lineWithoutLocation(Player player, String action) {
+        return timestamp() + player.getName() + "가 " + action;
     }
 
     /** 파일 이름에 쓸 수 없는 문자를 제거 */

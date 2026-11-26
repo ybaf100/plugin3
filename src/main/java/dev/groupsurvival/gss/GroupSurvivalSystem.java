@@ -4,6 +4,7 @@ import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerCommon;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import dev.groupsurvival.gss.command.GssCommand;
+import dev.groupsurvival.gss.feature.ActivityLogFeature;
 import dev.groupsurvival.gss.feature.AnonymityFeature;
 import dev.groupsurvival.gss.feature.ClientCheckFeature;
 import dev.groupsurvival.gss.feature.CommunicationFeature;
@@ -41,18 +42,19 @@ public final class GroupSurvivalSystem extends JavaPlugin {
         register(hiddenWorlds);
 
         if (getConfig().getBoolean("night-vision.enabled", true)) {
-            NightVisionFeature nightVision = new NightVisionFeature(this);
+            NightVisionFeature nightVision = new NightVisionFeature(this, fileLog);
             register(nightVision);
             Objects.requireNonNull(getCommand("nv")).setExecutor(nightVision);
         }
 
-        ElytraFeature elytra = new ElytraFeature(this);
+        ElytraFeature elytra = new ElytraFeature(this, fileLog);
         register(elytra);
         Objects.requireNonNull(getCommand("gss")).setExecutor(new GssCommand(elytra));
 
         register(new DragonFeature(this));
         register(new CommunicationFeature(this));
         register(new HandSwapActionFeature(this, fileLog));
+        register(new ActivityLogFeature(fileLog));
 
         SafeZoneFeature safeZone = new SafeZoneFeature(this);
         register(safeZone);

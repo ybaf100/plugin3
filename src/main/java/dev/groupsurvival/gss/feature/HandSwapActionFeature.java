@@ -66,8 +66,7 @@ public final class HandSwapActionFeature implements Listener {
             for (ItemStack rest : leftover.values()) {
                 player.getWorld().dropItemNaturally(player.getLocation(), rest);
             }
-            log.write("시스템/배너.log", FileLog.now() + "에 " + player.getName() + "가 "
-                    + FileLog.format(player.getLocation()) + "에서 배너 " + amount + "개를 교환");
+            log.write("시스템/배너.log", FileLog.line(player, player.getLocation(), "배너 " + amount + "개를 교환"));
             return;
         }
 
@@ -76,7 +75,7 @@ public final class HandSwapActionFeature implements Listener {
             if (isChecked(tool)) {
                 // Skript 원본과 같이 이벤트는 취소하지 않음 (손 바꾸기는 그대로 진행)
                 player.sendMessage(LEGACY.deserialize(alreadyCheckedMessage));
-                String line = FileLog.now() + "에 " + player.getName() + "가 " + FileLog.format(loc) + "에서 좌표 확인 실패";
+                String line = FileLog.line(player, loc, "좌표 확인 실패");
                 log.write("시스템/나침반좌표확인실패/통합.log", line);
                 log.write("시스템/나침반좌표확인실패/" + FileLog.safeName(player.getName()) + ".log", line);
                 return;
@@ -93,8 +92,7 @@ public final class HandSwapActionFeature implements Listener {
                     .replace("%x%", number(loc.getX()))
                     .replace("%y%", number(loc.getY()))
                     .replace("%z%", number(loc.getZ()))));
-            log.write("시스템/나침반좌표확인.log", FileLog.now() + "에 " + player.getName() + "가 "
-                    + FileLog.format(loc) + "에서 좌표 확인");
+            log.write("시스템/나침반좌표확인.log", FileLog.line(player, loc, "좌표 확인"));
         }
     }
 

@@ -1,5 +1,6 @@
 package dev.groupsurvival.gss.feature;
 
+import dev.groupsurvival.gss.util.FileLog;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.NamespacedKey;
@@ -23,10 +24,12 @@ import org.jetbrains.annotations.NotNull;
 public final class NightVisionFeature implements Listener, CommandExecutor {
 
     private final Plugin plugin;
+    private final FileLog log;
     private final NamespacedKey key;
 
-    public NightVisionFeature(Plugin plugin) {
+    public NightVisionFeature(Plugin plugin, FileLog log) {
         this.plugin = plugin;
+        this.log = log;
         this.key = new NamespacedKey(plugin, "night_vision");
     }
 
@@ -42,6 +45,7 @@ public final class NightVisionFeature implements Listener, CommandExecutor {
         if (enable) {
             apply(player);
             player.sendActionBar(Component.text("야간투시 켜짐", NamedTextColor.GREEN));
+            log.write("시스템/야간투시.log", FileLog.line(player, player.getLocation(), "야간투시 획득"));
         } else {
             player.removePotionEffect(PotionEffectType.NIGHT_VISION);
             player.sendActionBar(Component.text("야간투시 꺼짐", NamedTextColor.GRAY));
