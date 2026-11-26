@@ -30,7 +30,7 @@ commands:
     aliases: [haste]
   gss:
     description: Group Survival System 관리 명령어 (콘솔 전용)
-    usage: /gss <elytra|health|haste> ...
+    usage: /gss <elytra|health|haste|border> ...
 
 permissions:
   gss.nightvision:

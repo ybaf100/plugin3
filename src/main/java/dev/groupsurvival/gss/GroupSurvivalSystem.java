@@ -17,6 +17,7 @@ import dev.groupsurvival.gss.feature.NightVisionFeature;
 import dev.groupsurvival.gss.feature.PlayerHeadFeature;
 import dev.groupsurvival.gss.feature.RandomSpawnFeature;
 import dev.groupsurvival.gss.feature.SafeZoneFeature;
+import dev.groupsurvival.gss.feature.WorldBorderFeature;
 import dev.groupsurvival.gss.integration.LunarIntegration;
 import dev.groupsurvival.gss.packet.AnonymityPacketListener;
 import dev.groupsurvival.gss.packet.CompassTargetListener;
@@ -65,7 +66,13 @@ public final class GroupSurvivalSystem extends JavaPlugin {
 
         ElytraFeature elytra = new ElytraFeature(this, fileLog);
         register(elytra);
-        Objects.requireNonNull(getCommand("gss")).setExecutor(new GssCommand(elytra, upgrades));
+
+        WorldBorderFeature border = null;
+        if (getConfig().getBoolean("world-border.enabled", true)) {
+            border = new WorldBorderFeature(this, fileLog);
+            border.start();
+        }
+        Objects.requireNonNull(getCommand("gss")).setExecutor(new GssCommand(elytra, upgrades, border));
 
         register(new DragonFeature(this));
         register(new CommunicationFeature(this));

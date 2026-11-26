@@ -1,6 +1,7 @@
 package dev.groupsurvival.gss.command;
 
 import dev.groupsurvival.gss.feature.ElytraFeature;
+import dev.groupsurvival.gss.feature.WorldBorderFeature;
 import dev.groupsurvival.gss.upgrade.UpgradeFeature;
 import dev.groupsurvival.gss.upgrade.UpgradeTrack;
 import org.bukkit.Bukkit;
@@ -17,15 +18,18 @@ import org.jetbrains.annotations.NotNull;
  *   gss elytra <on|off|status>
  *   gss health <플레이어> [하트]      (하트를 빼면 현재 값 확인)
  *   gss haste <플레이어> [0|1|2]
+ *   gss border                       (월드보더 단계 확인)
  */
 public final class GssCommand implements CommandExecutor {
 
     private final ElytraFeature elytra;
     private final UpgradeFeature upgrades;
+    private final WorldBorderFeature border;
 
-    public GssCommand(ElytraFeature elytra, UpgradeFeature upgrades) {
+    public GssCommand(ElytraFeature elytra, UpgradeFeature upgrades, WorldBorderFeature border) {
         this.elytra = elytra;
         this.upgrades = upgrades;
+        this.border = border;
     }
 
     @Override
@@ -40,10 +44,15 @@ public final class GssCommand implements CommandExecutor {
             case "elytra" -> elytra(sender, args);
             case "health" -> upgrade(sender, args, upgrades.healthTrack(), true);
             case "haste" -> upgrade(sender, args, upgrades.hasteTrack(), false);
+            case "border" -> {
+                if (border == null) sender.sendMessage("[GSS] 월드보더 기능이 꺼져 있습니다.");
+                else border.status().forEach(sender::sendMessage);
+            }
             default -> {
                 sender.sendMessage("사용법: gss elytra <on|off|status>");
                 sender.sendMessage("        gss health <플레이어> [하트]");
                 sender.sendMessage("        gss haste <플레이어> [0|1|2]");
+                sender.sendMessage("        gss border  (월드보더 단계 확인)");
             }
         }
         return true;
