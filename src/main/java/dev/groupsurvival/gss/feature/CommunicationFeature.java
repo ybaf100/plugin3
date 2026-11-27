@@ -1,5 +1,6 @@
 package dev.groupsurvival.gss.feature;
 
+import dev.groupsurvival.gss.util.ActionBars;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import java.util.HashSet;
 import java.util.List;
@@ -111,7 +112,7 @@ public final class CommunicationFeature implements Listener {
         String label = event.getMessage().substring(1).split(" ", 2)[0];
         if (!allowedCommands.contains(baseLabel(label))) {
             event.setCancelled(true);
-            event.getPlayer().sendActionBar(Component.text("사용할 수 없는 명령어입니다.", NamedTextColor.RED));
+            ActionBars.send(event.getPlayer(), Component.text("사용할 수 없는 명령어입니다.", NamedTextColor.RED));
         }
     }
 
@@ -126,7 +127,7 @@ public final class CommunicationFeature implements Listener {
     public void onBook(PlayerEditBookEvent event) {
         if (!blockBooks) return;
         event.setCancelled(true);
-        event.getPlayer().sendActionBar(Component.text("책은 작성할 수 없습니다.", NamedTextColor.RED));
+        ActionBars.send(event.getPlayer(), Component.text("책은 작성할 수 없습니다.", NamedTextColor.RED));
     }
 
     // ── 모루 이름 변경 ──
@@ -150,7 +151,7 @@ public final class CommunicationFeature implements Listener {
         ItemStack item = event.getPlayer().getInventory().getItem(event.getHand());
         if (item.getType() == Material.NAME_TAG && item.hasItemMeta() && item.getItemMeta().hasCustomName()) {
             event.setCancelled(true);
-            event.getPlayer().sendActionBar(Component.text("이름표는 사용할 수 없습니다.", NamedTextColor.RED));
+            ActionBars.send(event.getPlayer(), Component.text("이름표는 사용할 수 없습니다.", NamedTextColor.RED));
         }
     }
 

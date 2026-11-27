@@ -1,5 +1,6 @@
 package dev.groupsurvival.gss.feature;
 
+import dev.groupsurvival.gss.util.ActionBars;
 import dev.groupsurvival.gss.effect.PermanentEffects;
 import dev.groupsurvival.gss.util.FileLog;
 import net.kyori.adventure.text.Component;
@@ -51,10 +52,10 @@ public final class NightVisionFeature implements CommandExecutor, PermanentEffec
         player.getPersistentDataContainer().set(key, PersistentDataType.BOOLEAN, enable);
         effects.refresh(player);
         if (enable) {
-            player.sendActionBar(Component.text("야간투시 켜짐", NamedTextColor.GREEN));
+            ActionBars.send(player, Component.text("야간투시 켜짐", NamedTextColor.GREEN));
             log.write("시스템/야간투시.log", FileLog.line(player, player.getLocation(), "야간투시 획득"));
         } else {
-            player.sendActionBar(Component.text("야간투시 꺼짐", NamedTextColor.GRAY));
+            ActionBars.send(player, Component.text("야간투시 꺼짐", NamedTextColor.GRAY));
         }
         return enable;
     }

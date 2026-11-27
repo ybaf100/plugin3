@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Location;
@@ -83,8 +85,9 @@ public final class HandSwapActionFeature implements Listener {
             event.setCancelled(true);
             ItemMeta meta = tool.getItemMeta();
             List<Component> lore = new ArrayList<>();
-            lore.add(Component.text(" "));
-            lore.add(LEGACY.deserialize(checkedLore));
+            // 로어는 기본이 기울임체라서 꺼 줌 (색은 설정 문구의 색 그대로, 색이 없으면 회색)
+            lore.add(Component.text(" ").decoration(TextDecoration.ITALIC, false));
+            lore.add(LEGACY.deserialize(checkedLore).colorIfAbsent(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
             meta.lore(lore);
             tool.setItemMeta(meta);
             inventory.setItemInMainHand(tool);

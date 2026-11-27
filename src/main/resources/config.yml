@@ -92,12 +92,16 @@ communication:
     - 인증
     - auth
     - nv
+    - 성급함
+    - hs
     - 강화
     - upgrade
     - 체력강화
     - hp
     - 성급함강화
     - haste
+    - 포화강화
+    - saturation
   # 책과 깃펜 작성 금지
   block-books: false
   # 모루 이름 변경 금지
@@ -164,14 +168,25 @@ safe-zone:
     z: 0
     # 비워두면 첫 실행 때 0,0 지면 위에 자동 배치하고 여기에 높이를 저장
     y:
+  action-bar:
+    # 무적지역 안에 있는 동안 액션바에 계속 표시
+    enabled: true
+    text: "&a&l안전구역"
+    # 강화 준비가 끝났으면 옆에 같이 표시 (%upgrades% = 예: "체력 강화, 포화 해금")
+    ready-suffix: " &7| &e%upgrades% 가능"
+    # 다시 보내는 간격 (틱, 20 = 1초)
+    interval-ticks: 20
 
 # ─────────────────────────────────────────────
-#  강화 시스템 (/강화, /체력강화, /성급함강화)
-#  - 창 아랫줄에서 야간투시 / 성급함을 켜고 끌 수 있음 (둘 다 입자 없음, 죽어도 유지)
-#  - 재료는 강화 창에서 "인벤토리의 재료를 직접 클릭"해야만 들어감 (자동 투입 없음)
+#  강화 시스템 (/강화, /체력강화, /성급함강화, /포화강화)
+#  - 강화 화면은 대화창. 버튼으로 탭 이동, 재료 넣기, 강화하기, 클릭음, 야간투시/성급함/포화 켜기·끄기
+#    (효과는 모두 입자 없음, 죽어도 유지)
+#  - 재료는 [재료 넣기]로 연 투입함에서 "인벤토리의 재료를 직접 클릭"해야만 들어감 (자동 투입 없음)
 #    좌클릭 = 그 칸 전부 (필요한 만큼만), 우클릭 = 1개
 #  - 재료는 나눠서 넣을 수 있고, 넣은 재료는 돌려받을 수 없음
-#  - 재료 키: 아이템 이름(Material) 또는 그룹 (#concrete = 아무 색 콘크리트)
+#  - 재료 키: 아이템 이름(Material) 또는 그룹
+#    #concrete = 아무 색 콘크리트, #cooked_meat = 구운 고기/생선 (날것 불가)
+#  - 한 단계 재료는 최대 18종류
 #  - 이름을 바꾼/마법이 부여된 아이템도 인정. 셜커 상자 안의 아이템은 해당 없음
 # ─────────────────────────────────────────────
 health-upgrade:
@@ -227,6 +242,32 @@ haste-upgrade:
     "1":                                  # 성급함 I -> II
       - minecraft:story/form_obsidian     # 얼음 양동이 챌린지 (흑요석)
       - minecraft:nether/obtain_ancient_debris  # 깊은 곳에 숨겨진 것 (고대 잔해)
+
+saturation-upgrade:
+  # 영구 포화: 0(해금 안 함) -> 해금 한 번. 죽어도 다시 지급되는 영구 효과, 창에서 켜고 끌 수 있음
+  steps:
+    "0":
+      "#cooked_meat": 256      # 구운 고기/생선 섞어서 (소, 돼지, 닭, 양, 토끼, 대구, 연어 · 날것 불가)
+      BREAD: 64
+      COOKIE: 64
+      PUMPKIN_PIE: 64
+      BAKED_POTATO: 64
+      APPLE: 64
+      GOLDEN_APPLE: 64
+      ENCHANTED_GOLDEN_APPLE: 2
+      CAKE: 16
+      BEETROOT: 64
+      DRIED_KELP: 64
+      MELON_SLICE: 64
+      SWEET_BERRIES: 64
+      GLOW_BERRIES: 64
+      CHORUS_FRUIT: 64
+      CARROT: 64
+      GOLDEN_CARROT: 64
+  # 도전과제 조건 (형식은 health-upgrade.advancements 와 같음)
+  advancements:
+    "0":
+      - minecraft:husbandry/balanced_diet   # 균형 잡힌 식단 (모든 음식 먹기)
 
 anonymity:
   # 다른 플레이어에게 보이는 이름 (이름표는 항상 숨김)

@@ -10,11 +10,11 @@ import java.util.logging.Logger;
 import org.bukkit.configuration.ConfigurationSection;
 
 /**
- * 강화 종류 하나 (체력, 성급함). 단계 = level, steps[level] = level -> level+1 에 필요한 재료.
+ * 강화 종류 하나 (체력, 성급함, 포화). 단계 = level, steps[level] = level -> level+1 에 필요한 재료.
  */
 public final class UpgradeTrack {
 
-    public static final int MAX_REQUIREMENTS = 8;
+    public static final int MAX_REQUIREMENTS = 18; // 투입함 2줄(9칸 x 2)
 
     private final String id;
     private final String name;
@@ -101,6 +101,13 @@ public final class UpgradeTrack {
 
     public String name() {
         return name;
+    }
+
+    /** 이름 + 을/를 (받침에 맞춰) */
+    public String nameObject() {
+        char last = name.charAt(name.length() - 1);
+        boolean batchim = last >= 0xAC00 && last <= 0xD7A3 && (last - 0xAC00) % 28 != 0;
+        return name + (batchim ? "을" : "를");
     }
 
     public int start() {

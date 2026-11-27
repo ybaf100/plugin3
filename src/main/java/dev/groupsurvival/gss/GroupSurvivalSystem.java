@@ -62,7 +62,7 @@ public final class GroupSurvivalSystem extends JavaPlugin {
 
         upgrades = new UpgradeFeature(this, fileLog, effects, nightVision);
         register(upgrades);
-        for (String command : new String[]{"강화", "체력강화", "성급함강화"}) {
+        for (String command : new String[]{"강화", "체력강화", "성급함강화", "포화강화", "성급함"}) {
             Objects.requireNonNull(getCommand(command)).setExecutor(upgrades);
         }
 
@@ -97,6 +97,7 @@ public final class GroupSurvivalSystem extends JavaPlugin {
 
         SafeZoneFeature safeZone = new SafeZoneFeature(this);
         register(safeZone);
+        safeZone.setReadyUpgrades(upgrades::readyUpgrades);
         safeZone.start();
 
         AnonymityFeature anonymity = new AnonymityFeature(this);

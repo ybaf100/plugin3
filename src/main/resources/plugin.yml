@@ -16,8 +16,12 @@ commands:
     description: 영구 야간투시를 켜거나 끕니다.
     usage: /nv
     permission: gss.nightvision
+  성급함:
+    description: 영구 성급함을 켜거나 끕니다 (해금한 뒤).
+    usage: /성급함
+    aliases: [hs]
   강화:
-    description: 강화 창을 엽니다 (체력 / 성급함, 야간투시·성급함 켜기/끄기).
+    description: 강화 창을 엽니다 (체력 / 성급함 / 포화, 야간투시·성급함·포화·클릭음 켜기/끄기).
     usage: /강화
     aliases: [upgrade]
   체력강화:
@@ -28,9 +32,13 @@ commands:
     description: 강화 창의 성급함 탭을 엽니다.
     usage: /성급함강화
     aliases: [haste]
+  포화강화:
+    description: 강화 창의 포화 탭을 엽니다.
+    usage: /포화강화
+    aliases: [saturation]
   gss:
     description: Group Survival System 관리 명령어 (콘솔 전용)
-    usage: /gss <elytra|health|haste|border|maintenance|state> ...
+    usage: /gss <elytra|health|haste|saturation|border|maintenance|state> ...
 
 permissions:
   gss.nightvision:

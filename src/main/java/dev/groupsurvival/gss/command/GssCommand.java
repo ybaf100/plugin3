@@ -47,8 +47,9 @@ public final class GssCommand implements CommandExecutor {
         String sub = args.length >= 1 ? args[0].toLowerCase() : "";
         switch (sub) {
             case "elytra" -> elytra(sender, args);
-            case "health" -> upgrade(sender, args, upgrades.healthTrack(), true);
-            case "haste" -> upgrade(sender, args, upgrades.hasteTrack(), false);
+            case "health" -> upgrade(sender, args, upgrades.healthTrack());
+            case "haste" -> upgrade(sender, args, upgrades.hasteTrack());
+            case "saturation" -> upgrade(sender, args, upgrades.saturationTrack());
             case "maintenance" -> maintenance(sender, args);
             case "state" -> state.status().forEach(sender::sendMessage);
             case "border" -> {
@@ -59,6 +60,7 @@ public final class GssCommand implements CommandExecutor {
                 sender.sendMessage("사용법: gss elytra <on|off|status>");
                 sender.sendMessage("        gss health <플레이어> [하트]");
                 sender.sendMessage("        gss haste <플레이어> [0|1|2]");
+                sender.sendMessage("        gss saturation <플레이어> [0|1]");
                 sender.sendMessage("        gss border  (월드보더 단계 확인)");
                 sender.sendMessage("        gss maintenance <on [이유]|off>  (점검 모드)");
                 sender.sendMessage("        gss state  (서버 상태 확인)");
@@ -98,7 +100,7 @@ public final class GssCommand implements CommandExecutor {
         }
     }
 
-    private void upgrade(CommandSender sender, String[] args, UpgradeTrack track, boolean health) {
+    private void upgrade(CommandSender sender, String[] args, UpgradeTrack track) {
         if (args.length < 2) {
             sender.sendMessage("사용법: gss " + track.id() + " <플레이어> [" + track.start() + "~" + track.max() + "]");
             return;
@@ -123,8 +125,7 @@ public final class GssCommand implements CommandExecutor {
             sender.sendMessage("[GSS] 범위: " + track.start() + "~" + track.max());
             return;
         }
-        if (health) upgrades.setHealthLevel(player, value);
-        else upgrades.setHasteLevel(player, value);
+        upgrades.setLevel(player, track, value);
         sender.sendMessage("[GSS] " + player.getName() + " " + track.name() + " → " + track.label(value)
                 + " (지금 단계에 넣은 재료는 초기화됨)");
     }

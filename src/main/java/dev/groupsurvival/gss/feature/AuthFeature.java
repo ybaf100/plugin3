@@ -1,5 +1,6 @@
 package dev.groupsurvival.gss.feature;
 
+import dev.groupsurvival.gss.util.ActionBars;
 import dev.groupsurvival.gss.util.FileLog;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import java.time.Duration;
@@ -72,7 +73,7 @@ public final class AuthFeature implements Listener, CommandExecutor {
         plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
             for (UUID id : pending) {
                 Player player = plugin.getServer().getPlayer(id);
-                if (player != null) player.sendActionBar(prompt());
+                if (player != null) ActionBars.send(player, prompt());
             }
         }, 40L, 40L);
     }
@@ -116,11 +117,11 @@ public final class AuthFeature implements Listener, CommandExecutor {
             pending.remove(player.getUniqueId());
             player.getPersistentDataContainer().set(key, PersistentDataType.BOOLEAN, true);
             player.clearTitle();
-            player.sendActionBar(Component.text("인증되었습니다! 이제 움직일 수 있습니다.", NamedTextColor.GREEN));
+            ActionBars.send(player, Component.text("인증되었습니다! 이제 움직일 수 있습니다.", NamedTextColor.GREEN));
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.2f);
             log.write("시스템/인증.log", FileLog.line(player, player.getLocation(), "인증함"));
         } else {
-            player.sendActionBar(Component.text("키가 올바르지 않습니다.", NamedTextColor.RED));
+            ActionBars.send(player, Component.text("키가 올바르지 않습니다.", NamedTextColor.RED));
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 0.7f, 0.7f);
             log.write("시스템/인증실패.log", FileLog.line(player, player.getLocation(), "인증 실패"));
         }
@@ -160,7 +161,7 @@ public final class AuthFeature implements Listener, CommandExecutor {
         if (colon >= 0) label = label.substring(colon + 1);
         if (label.equals("인증") || label.equals("auth")) return;
         event.setCancelled(true);
-        event.getPlayer().sendActionBar(prompt());
+        ActionBars.send(event.getPlayer(), prompt());
     }
 
     // ── 인증 전 이동 금지 (고개 돌리기는 허용) ──
