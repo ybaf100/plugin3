@@ -17,6 +17,7 @@ import dev.groupsurvival.gss.feature.NightVisionFeature;
 import dev.groupsurvival.gss.feature.PlayerHeadFeature;
 import dev.groupsurvival.gss.feature.RandomSpawnFeature;
 import dev.groupsurvival.gss.feature.SafeZoneFeature;
+import dev.groupsurvival.gss.feature.ServerStateFeature;
 import dev.groupsurvival.gss.feature.SilverfishFeature;
 import dev.groupsurvival.gss.feature.WorldBorderFeature;
 import dev.groupsurvival.gss.integration.LunarIntegration;
@@ -73,7 +74,9 @@ public final class GroupSurvivalSystem extends JavaPlugin {
             border = new WorldBorderFeature(this, fileLog);
             border.start();
         }
-        Objects.requireNonNull(getCommand("gss")).setExecutor(new GssCommand(elytra, upgrades, border));
+        ServerStateFeature serverState = new ServerStateFeature(this, border);
+        register(serverState);
+        Objects.requireNonNull(getCommand("gss")).setExecutor(new GssCommand(elytra, upgrades, border, serverState));
 
         register(new DragonFeature(this));
         if (getConfig().getBoolean("silverfish.remove", true)) {
@@ -107,7 +110,7 @@ public final class GroupSurvivalSystem extends JavaPlugin {
         // 패킷 리스너
         var events = PacketEvents.getAPI().getEventManager();
         packetListeners.add(events.registerListener(
-                new AnonymityPacketListener(anonymity), PacketListenerPriority.NORMAL));
+                new AnonymityPacketListener(anonymity, this), PacketListenerPriority.NORMAL));
 
         if (getConfig().getBoolean("compass.point-to-origin", true)) {
             packetListeners.add(events.registerListener(

@@ -487,7 +487,7 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
                     lore.add(text("· 도전과제 달성:", NamedTextColor.LIGHT_PURPLE));
                     for (Advancement advancement : roadmapAdvancements.advancements()) {
                         lore.add(text("   ", NamedTextColor.LIGHT_PURPLE)
-                                .append(plain(AdvancementRequirement.title(advancement), NamedTextColor.LIGHT_PURPLE)));
+                                .append(AdvancementRequirement.title(advancement).color(NamedTextColor.LIGHT_PURPLE).decoration(TextDecoration.ITALIC, false)));
                     }
                 } else {
                     lore.add(text("· 도전과제 " + roadmapAdvancements.target() + "개 달성", NamedTextColor.LIGHT_PURPLE));
@@ -552,7 +552,7 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
                 for (Advancement advancement : advancementRequirement.advancements()) {
                     boolean done = player.getAdvancementProgress(advancement).isDone();
                     lore.add(text(done ? " ✔ " : " ✘ ", done ? NamedTextColor.GREEN : NamedTextColor.RED)
-                            .append(plain(AdvancementRequirement.title(advancement), done ? NamedTextColor.GREEN : NamedTextColor.GRAY)));
+                            .append(AdvancementRequirement.title(advancement).color(done ? NamedTextColor.GREEN : NamedTextColor.RED).decoration(TextDecoration.ITALIC, false)));
                 }
             } else {
                 lore.add(text("이번 단계는 도전과제를 " + needAdvancements + "개 이상 달성해야 강화할 수 있습니다", NamedTextColor.WHITE));

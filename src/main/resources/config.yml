@@ -2,6 +2,29 @@
 #  Group Survival System 설정
 # ─────────────────────────────────────────────
 
+server-state:
+  # 오픈 시각 (한국시간, "yyyy-MM-dd HH:mm"). 이 시각 전에는 OP 외 접속 불가. 비우면 바로 오픈
+  open-at: ""
+  # 점검 모드 (콘솔 gss maintenance on [이유] / off 로 바꾸면 자동 저장). 켜지면 OP 외 접속 불가
+  maintenance: false
+  maintenance-reason: "점검 중입니다"
+
+motd:
+  # 서버 목록에 나오는 문구 (2줄). & 색 코드 사용 가능
+  # 쓸 수 있는 값: %reason% 점검 이유, %open% 오픈 시각, %open_countdown% 오픈까지 남은 시간,
+  #               %stage% 월드보더 단계, %size% 월드보더 크기, %next% 다음 단계 시각, %countdown% 다음 단계까지 남은 시간
+  enabled: true
+  line1: "&6&lGroup Survival System"
+  # 둘째 줄: 상태별 (우선순위 점검 중 > 오픈 전 > 화이트리스트 > 운영 중)
+  maintenance: "&c점검 중 &7· &f%reason%"
+  before-open: "&e오픈 예정 &f%open% &7(%open_countdown% 남음)"
+  whitelist: "&6허가된 사람만 접속할 수 있습니다"
+  running: "&a%stage%단계 &7· &f%size% &7· 다음 단계까지 &f%countdown%"
+  running-final: "&a%stage%단계 &7· &f%size%"
+  # 접속이 막혔을 때 보이는 메시지
+  kick-maintenance: "&c지금은 점검 중입니다.\n\n&f%reason%"
+  kick-before-open: "&e아직 오픈 전입니다.\n\n&f오픈: %open% &7(%open_countdown% 남음)"
+
 auth:
   # 첫 접속 인증: 정해진 키를 입력하기 전에는 움직일 수 없음 (/인증 <키> 또는 채팅에 키 입력)
   # 한 번 인증하면 다음 접속부터는 필요 없음

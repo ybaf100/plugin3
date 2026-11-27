@@ -73,8 +73,13 @@ public final class AdvancementRequirement {
         return advancements;
     }
 
+    /**
+     * 도전과제 제목 (색, 대괄호, 마우스 설명 없이). displayName() 은 도전과제 종류별 색(초록 등)이 이미 붙어 있어서
+     * 원하는 색을 덮어쓸 수 없으므로 쓰지 않음.
+     */
     public static Component title(Advancement advancement) {
-        return advancement.displayName();
+        var display = advancement.getDisplay();
+        return display != null ? display.title() : Component.text(advancement.getKey().getKey());
     }
 
     /** 달성한 도전과제 수 (레시피 해금과 화면에 안 나오는 도전과제는 제외) */
