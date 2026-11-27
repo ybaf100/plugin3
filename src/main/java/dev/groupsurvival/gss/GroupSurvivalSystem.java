@@ -44,6 +44,7 @@ public final class GroupSurvivalSystem extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        addMissingConfig();
         fileLog = new FileLog(getDataFolder().toPath(), getLogger());
         apolloPresent = Bukkit.getPluginManager().isPluginEnabled("Apollo-Bukkit");
 
@@ -149,5 +150,24 @@ public final class GroupSurvivalSystem extends JavaPlugin {
 
     private void register(Listener listener) {
         getServer().getPluginManager().registerEvents(listener, this);
+    }
+
+    /**
+     * 플러그인을 업데이트해도 서버의 config.yml 은 덮어쓰지 않으므로, 새 버전에서 생긴 설정 항목은
+     * 기본값으로 채워 넣고 저장함 (이미 있는 값은 건드리지 않음).
+     */
+    private void addMissingConfig() {
+        var config = getConfig();
+        var defaults = config.getDefaults();
+        if (defaults == null) return;
+        java.util.List<String> added = new java.util.ArrayList<>();
+        for (String key : defaults.getKeys(true)) {
+            if (defaults.isConfigurationSection(key) || config.isSet(key)) continue;
+            config.set(key, defaults.get(key));
+            added.add(key);
+        }
+        if (added.isEmpty()) return;
+        saveConfig();
+        getLogger().info("config.yml 에 새 설정 " + added.size() + "개를 기본값으로 추가했습니다: " + String.join(", ", added));
     }
 }

@@ -59,7 +59,7 @@ LANG=C.UTF-8 java -jar paper.jar --nogui
 | `/nv` | | 영구 야간투시 켜기/끄기 (강화 창 버튼과 같음) |
 | `/성급함` | `/hs` | 영구 성급함 켜기/끄기 (해금한 뒤, 강화 창 버튼과 같음) |
 
-일반 플레이어는 **위 명령어만** 쓸 수 있습니다 (`communication.allowed-commands`). 그 외 명령어는 막히고 명령어 목록에서도 보이지 않습니다. OP(`gss.bypass.commands`)는 제한이 없습니다.
+일반 플레이어는 **위 명령어만** 쓸 수 있습니다 (`communication.allowed-commands`, 위 표의 이 플러그인 명령어는 목록에 없어도 항상 허용). 그 외 명령어는 막히고 명령어 목록에서도 보이지 않습니다. OP(`gss.bypass.commands`)는 제한이 없습니다.
 
 ### 관리자 (콘솔 전용)
 
@@ -359,6 +359,8 @@ LANG=C.UTF-8 java -jar paper.jar --nogui
 ## 설정 (`config.yml`)
 
 `plugins/GroupSurvivalSystem/config.yml`. 바꾼 뒤 서버를 재시작하면 적용됩니다. `&` 색 코드를 쓸 수 있는 항목은 표에 표시했습니다.
+
+플러그인을 새 버전으로 바꾸면, 기존 `config.yml`에 없는 새 설정 항목은 켤 때 기본값으로 자동 추가됩니다 (이미 있는 값은 그대로, 추가한 항목은 서버 로그에 표시).
 
 | 키 | 기본값 | 설명 |
 |---|---|---|

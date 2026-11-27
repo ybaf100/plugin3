@@ -45,6 +45,7 @@ public final class CommunicationFeature implements Listener {
     private final boolean blockAnvil;
     private final boolean blockNameTags;
     private final Set<String> allowedCommands = new HashSet<>();
+    private static final List<String> PLAYER_COMMANDS = List.of("인증", "nv", "성급함", "강화", "체력강화", "성급함강화", "포화강화");
     private final double chatRadiusSq;
     private final Component chatPrefix;
     private final int signRadius;
@@ -59,6 +60,13 @@ public final class CommunicationFeature implements Listener {
         this.blockNameTags = config.getBoolean("communication.block-name-tags", false);
         for (String command : config.getStringList("communication.allowed-commands")) {
             allowedCommands.add(command.toLowerCase(Locale.ROOT));
+        }
+        // 이 플러그인의 플레이어 명령어는 설정 목록과 상관없이 항상 허용 (업데이트로 새 명령어가 생겨도 막히지 않게)
+        for (String name : PLAYER_COMMANDS) {
+            var command = plugin.getCommand(name);
+            if (command == null) continue;
+            allowedCommands.add(name.toLowerCase(Locale.ROOT));
+            for (String alias : command.getAliases()) allowedCommands.add(alias.toLowerCase(Locale.ROOT));
         }
         double radius = Math.max(1, config.getDouble("communication.local-chat.radius", 32));
         this.chatRadiusSq = radius * radius;

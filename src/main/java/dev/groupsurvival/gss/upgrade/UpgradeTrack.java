@@ -92,6 +92,7 @@ public final class UpgradeTrack {
                 if (!requirement.isEmpty()) advancements.put(level, requirement);
             }
         }
+        if (steps.isEmpty()) logger.warning("[" + name + " 강화] 설정에 재료가 하나도 없어서 이 강화는 바로 최대 단계로 보입니다.");
         return new UpgradeTrack(id, name, start, steps, advancements, label);
     }
 
