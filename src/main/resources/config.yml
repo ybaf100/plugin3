@@ -171,7 +171,9 @@ safe-zone:
   action-bar:
     # 무적지역 안에 있는 동안 액션바에 계속 표시
     enabled: true
-    text: "&a&l안전구역"
+    text: "&a&l✓ 안전지역 &f: &cPVP &c&l제한"
+    # 무적지역을 나갈 때 한 번 표시 (비우면 표시 안 함)
+    exit-text: "&c&l✖ 안전지역 &f: &aPVP &a&l가능"
     # 강화 준비가 끝났으면 옆에 같이 표시 (%upgrades% = 예: "체력 강화, 포화 해금")
     ready-suffix: " &7| &e%upgrades% 가능"
     # 다시 보내는 간격 (틱, 20 = 1초)

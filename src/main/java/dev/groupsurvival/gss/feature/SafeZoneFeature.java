@@ -34,7 +34,7 @@ import org.bukkit.plugin.java.JavaPlugin;
  * 오버월드 0,0 무적지역 + 부술 수 없는 고정 엔더상자.
  * 무적지역 안의 플레이어는 피해를 입지 않음 (공허, /kill 제외). 블록 부수기/설치와 몹 스폰은 허용.
  * 무적지역 안의 플레이어는 밀려나지 않음 (넉백, 돌풍구, 폭발, 낚싯대 당기기 등). 스스로 움직이는 것은 그대로.
- * 무적지역 안에 있는 동안 액션바에 "안전구역" 표시 (강화 준비가 끝났으면 옆에 같이 표시).
+ * 무적지역 안에 있는 동안 액션바에 "✓ 안전지역 : PVP 제한" 표시 (강화 준비가 끝났으면 옆에 같이 표시), 나갈 때 "✖ 안전지역 : PVP 가능".
  */
 public final class SafeZoneFeature implements Listener {
 
@@ -61,6 +61,7 @@ public final class SafeZoneFeature implements Listener {
     public void start() {
         var config = plugin.getConfig();
         if (zoneEnabled && config.getBoolean("safe-zone.action-bar.enabled", true)) {
+            migrateActionBarText();
             long interval = Math.max(10L, config.getLong("safe-zone.action-bar.interval-ticks", 20L));
             plugin.getServer().getScheduler().runTaskTimer(plugin, this::showActionBars, interval, interval);
         }
@@ -111,15 +112,30 @@ public final class SafeZoneFeature implements Listener {
     }
 
     // ── 액션바 ──
+    private static final String OLD_DEFAULT_TEXT = "&a&l안전구역";
+    private static final String DEFAULT_TEXT = "&a&l✓ 안전지역 &f: &cPVP &c&l제한";
+    private static final String DEFAULT_EXIT_TEXT = "&c&l✖ 안전지역 &f: &aPVP &a&l가능";
+
+    /** 예전 버전이 자동으로 넣은 기본 문구("&a&l안전구역")는 새 기본 문구로 바꿈 (직접 바꾼 문구는 그대로) */
+    private void migrateActionBarText() {
+        var config = plugin.getConfig();
+        if (OLD_DEFAULT_TEXT.equals(config.getString("safe-zone.action-bar.text"))) {
+            config.set("safe-zone.action-bar.text", DEFAULT_TEXT);
+            plugin.saveConfig();
+        }
+    }
+
     private void showActionBars() {
         var config = plugin.getConfig();
         LegacyComponentSerializer legacy = LegacyComponentSerializer.legacyAmpersand();
-        String text = config.getString("safe-zone.action-bar.text", "&a&l안전구역");
+        String text = config.getString("safe-zone.action-bar.text", DEFAULT_TEXT);
+        String exitText = config.getString("safe-zone.action-bar.exit-text", DEFAULT_EXIT_TEXT);
         String suffix = config.getString("safe-zone.action-bar.ready-suffix", " &7| &e%upgrades% 가능");
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             if (!isInZone(player.getLocation())) {
+                // 나가는 순간 한 번 "PVP 가능" 표시
                 if (inside.remove(player.getUniqueId()) && !ActionBars.isHeld(player)) {
-                    player.sendActionBar(Component.empty()); // 나가면 바로 지움
+                    player.sendActionBar(exitText == null || exitText.isEmpty() ? Component.empty() : legacy.deserialize(exitText));
                 }
                 continue;
             }
