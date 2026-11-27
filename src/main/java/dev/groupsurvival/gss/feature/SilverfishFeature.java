@@ -108,7 +108,27 @@ public final class SilverfishFeature implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onSpawn(EntitySpawnEvent event) {
-        if (event.getEntityType() == EntityType.SILVERFISH) event.setCancelled(true);
+        if (event.getEntityType() == EntityType.SILVERFISH) {
+            event.setCancelled(true);
+            return;
+        }
+        // 벌레먹음 물약(불길한 시련의 아이템 소환기 등)은 던져지는 순간 없앰, 벌레먹음 구름도 생기지 않음
+        if (event.getEntity() instanceof org.bukkit.entity.ThrownPotion potion && isInfested(potion.getPotionMeta())) {
+            event.setCancelled(true);
+        } else if (event.getEntity() instanceof org.bukkit.entity.AreaEffectCloud cloud && isInfested(cloud)) {
+            event.setCancelled(true);
+        }
+    }
+
+    private static boolean isInfested(PotionMeta meta) {
+        if (meta == null) return false;
+        if (meta.getBasePotionType() == PotionType.INFESTED) return true;
+        return meta.getCustomEffects().stream().anyMatch(effect -> effect.getType() == PotionEffectType.INFESTED);
+    }
+
+    private static boolean isInfested(org.bukkit.entity.AreaEffectCloud cloud) {
+        if (cloud.getBasePotionType() == PotionType.INFESTED) return true;
+        return cloud.getCustomEffects().stream().anyMatch(effect -> effect.getType() == PotionEffectType.INFESTED);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
