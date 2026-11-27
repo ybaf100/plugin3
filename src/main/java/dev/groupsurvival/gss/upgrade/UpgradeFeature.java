@@ -305,13 +305,21 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         if (!readyBarEnabled(player)) return List.of();
         List<String> upgrades = new ArrayList<>();
         List<String> unlocks = new ArrayList<>();
+        List<String> materials = new ArrayList<>();
         for (UpgradeTrack track : tracks.values()) {
-            if (!canUpgradeNow(player, track)) continue;
-            (isUnlock(track, data.level(player, track)) ? unlocks : upgrades).add(track.name());
+            if (!materialsAvailable(player, track)) continue;
+            int level = data.level(player, track);
+            AdvancementRequirement advancementRequirement = track.advancementRequirement(level);
+            if (advancementRequirement != null && !advancementRequirement.met(player)) {
+                materials.add(track.name()); // 재료는 다 모았지만 도전과제가 아직
+            } else {
+                (isUnlock(track, level) ? unlocks : upgrades).add(track.name());
+            }
         }
         List<String> result = new ArrayList<>();
         if (!upgrades.isEmpty()) result.add("&6" + String.join(" · ", upgrades) + " 강화 가능"); // 강화 = 금색
         if (!unlocks.isEmpty()) result.add("&e" + String.join(" · ", unlocks) + " 해금 가능");   // 해금 = 노란색
+        if (!materials.isEmpty()) result.add("&a" + String.join(" · ", materials) + " 재료 충족"); // 도전과제만 남음 = 연두색
         return result;
     }
 
@@ -324,6 +332,13 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         if (level >= track.max()) return false;
         AdvancementRequirement advancementRequirement = track.advancementRequirement(level);
         if (advancementRequirement != null && !advancementRequirement.met(player)) return false;
+        return materialsAvailable(player, track);
+    }
+
+    /** 재료가 [넣은 양 + 인벤토리에 있는 양]으로 모두 충분한지 (도전과제는 보지 않음) */
+    boolean materialsAvailable(Player player, UpgradeTrack track) {
+        int level = data.level(player, track);
+        if (level >= track.max()) return false;
         Map<String, Integer> progress = data.progress(player, track);
         ItemStack[] storage = player.getInventory().getStorageContents(); // 투입함에서 넣을 수 있는 칸 (0~35)
         for (Requirement requirement : track.requirements(level)) {
@@ -575,9 +590,28 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
             fail(player, requirement.name().append(Component.text("은(는) 이미 다 넣었습니다")));
             return;
         }
-        int take = one ? 1 : Math.min(remaining, stack.getAmount());
-        stack.setAmount(stack.getAmount() - take);
-        inventory.setItem(slot, stack.getAmount() > 0 ? stack : null);
+        int take;
+        if (one) {
+            take = 1;
+            stack.setAmount(stack.getAmount() - 1);
+            inventory.setItem(slot, stack.getAmount() > 0 ? stack : null);
+        } else {
+            // 쉬프트+클릭: 클릭한 칸부터 인벤토리의 같은 재료를 전부 (필요한 만큼만)
+            // 그룹 재료(구운 고기·생선, 콘크리트)는 그룹에 속하는 아이템 전부
+            take = 0;
+            List<Integer> slots = new ArrayList<>();
+            slots.add(slot);
+            for (int i = 0; i < 36; i++) if (i != slot) slots.add(i);
+            for (int i : slots) {
+                if (take >= remaining) break;
+                ItemStack item = inventory.getItem(i);
+                if (item == null || item.getType().isAir() || !requirement.matches(item.getType())) continue;
+                int n = Math.min(remaining - take, item.getAmount());
+                item.setAmount(item.getAmount() - n);
+                inventory.setItem(i, item.getAmount() > 0 ? item : null);
+                take += n;
+            }
+        }
         progress.put(requirement.key(), have + take);
         data.setProgress(player, track, progress);
 

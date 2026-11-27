@@ -299,7 +299,7 @@ final class UpgradeScreens {
                     done ? text("✔ 완료", NamedTextColor.GREEN) : text("남은 수량: " + (r.amount() - have) + "개", NamedTextColor.YELLOW),
                     Component.empty(),
                     text("인벤토리에서 이 재료를 클릭해 넣으세요", NamedTextColor.GRAY),
-                    text("클릭: 1개 · 쉬프트+클릭: 그 칸 전부", NamedTextColor.DARK_GRAY));
+                    text("클릭: 1개 · 쉬프트+클릭: 인벤토리의 이 재료 전부", NamedTextColor.DARK_GRAY));
             inv.setItem(entry.getKey(), item(r.icon(), done ? 1 : r.amount() - have,
                     colored(r.name(), done ? NamedTextColor.GREEN : NamedTextColor.GOLD), lore, done));
             Material gauge = done ? Material.LIME_STAINED_GLASS_PANE
@@ -311,7 +311,7 @@ final class UpgradeScreens {
         inv.setItem(menu.infoSlot(), item(Material.BOOK, 1, text("사용법", NamedTextColor.YELLOW), List.of(Component.empty(),
                 text("인벤토리의 재료를 클릭하면 들어갑니다", NamedTextColor.WHITE),
                 text("클릭: 1개", NamedTextColor.GRAY),
-                text("쉬프트+클릭: 그 칸 전부 (필요한 만큼만)", NamedTextColor.GRAY),
+                text("쉬프트+클릭: 인벤토리의 같은 재료 전부 (필요한 만큼만)", NamedTextColor.GRAY),
                 text("재료는 나눠서 넣을 수 있습니다", NamedTextColor.GRAY),
                 text("넣은 재료는 돌려받을 수 없습니다", NamedTextColor.RED),
                 Component.empty(),
