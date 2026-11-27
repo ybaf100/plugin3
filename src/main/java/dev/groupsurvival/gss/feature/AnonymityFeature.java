@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.GameRules;
 import org.bukkit.World;
@@ -153,6 +154,11 @@ public final class AnonymityFeature implements Listener {
     public void onDeath(PlayerDeathEvent event) {
         // 바닐라 데스 메시지(이름/원인 노출)는 없애고, 고정 문구를 직접 전체 공지
         event.deathMessage(null);
+        if (OfflineBodyFeature.isSilentDeath(event.getPlayer().getUniqueId())) {
+            // 오프라인 중 잠든 몸이 이미 죽어서 공지했음: 다시 공지하지 않음
+            event.deathScreenMessageOverride(Component.text("접속을 끊은 사이 잠든 몸이 죽었습니다", NamedTextColor.RED));
+            return;
+        }
         event.deathScreenMessageOverride(deathMessage);
         plugin.getServer().broadcast(deathMessage);
     }

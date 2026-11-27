@@ -14,6 +14,8 @@ import dev.groupsurvival.gss.feature.DragonFeature;
 import dev.groupsurvival.gss.feature.ElytraFeature;
 import dev.groupsurvival.gss.feature.HandSwapActionFeature;
 import dev.groupsurvival.gss.feature.NightVisionFeature;
+import dev.groupsurvival.gss.feature.GroupLogFeature;
+import dev.groupsurvival.gss.feature.OfflineBodyFeature;
 import dev.groupsurvival.gss.feature.PlayerHeadFeature;
 import dev.groupsurvival.gss.feature.RandomSpawnFeature;
 import dev.groupsurvival.gss.feature.SafeZoneFeature;
@@ -40,6 +42,7 @@ public final class GroupSurvivalSystem extends JavaPlugin {
     private boolean apolloPresent;
     private FileLog fileLog;
     private UpgradeFeature upgrades;
+    private OfflineBodyFeature offlineBodies;
 
     @Override
     public void onEnable() {
@@ -94,12 +97,25 @@ public final class GroupSurvivalSystem extends JavaPlugin {
             register(auth);
             Objects.requireNonNull(getCommand("인증")).setExecutor(auth);
         }
-        if (getConfig().getBoolean("player-head.enabled", true)) register(new PlayerHeadFeature(this));
+        PlayerHeadFeature heads = null;
+        if (getConfig().getBoolean("player-head.enabled", true)) {
+            heads = new PlayerHeadFeature(this);
+            register(heads);
+        }
 
         SafeZoneFeature safeZone = new SafeZoneFeature(this);
         register(safeZone);
         safeZone.setReadyUpgrades(upgrades::readyUpgradesForBar);
         safeZone.start();
+
+        if (getConfig().getBoolean("group-log.enabled", true)) {
+            new GroupLogFeature(this, fileLog,
+                    getConfig().getBoolean("group-log.ignore-safe-zone", true) ? safeZone::isInZone : loc -> false).start();
+        }
+        if (getConfig().getBoolean("offline-body.enabled", true)) {
+            offlineBodies = new OfflineBodyFeature(this, fileLog, safeZone::isInZone, heads);
+            register(offlineBodies);
+        }
 
         AnonymityFeature anonymity = new AnonymityFeature(this);
         register(anonymity);
@@ -139,6 +155,7 @@ public final class GroupSurvivalSystem extends JavaPlugin {
     @Override
     public void onDisable() {
         if (upgrades != null) upgrades.closeAll();
+        if (offlineBodies != null) offlineBodies.shutdown();
         if (PacketEvents.getAPI() != null) {
             for (PacketListenerCommon listener : packetListeners) {
                 PacketEvents.getAPI().getEventManager().unregisterListener(listener);

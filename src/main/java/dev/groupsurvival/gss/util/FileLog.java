@@ -58,6 +58,16 @@ public final class FileLog {
         return timestamp() + player.getName() + "가 " + location(loc) + "에서 " + action;
     }
 
+    /** "[날짜] 시각에 이름가 위치에서 행동" (오프라인 플레이어 등 이름만 있을 때) */
+    public static String line(String name, Location loc, String action) {
+        return timestamp() + name + "가 " + location(loc) + "에서 " + action;
+    }
+
+    /** "[날짜] 시각에 내용" */
+    public static String line(String text) {
+        return timestamp() + text;
+    }
+
     /** "[날짜] 시각에 이름가 행동" (좌표 제외) */
     public static String lineWithoutLocation(Player player, String action) {
         return timestamp() + player.getName() + "가 " + action;

@@ -36,9 +36,13 @@ public final class PlayerHeadFeature implements Listener {
     }
 
     private ItemStack head(Player victim) {
+        return head(victim.getPlayerProfile());
+    }
+
+    /** 이 프로필의 머리 (오프라인 몸이 죽었을 때도 사용) */
+    public ItemStack head(PlayerProfile source) {
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) head.getItemMeta();
-        PlayerProfile source = victim.getPlayerProfile();
         PlayerProfile profile;
         if (anonymous) {
             // 이름 없이 스킨(textures)만 담은 프로필: 아이템 이름이 "플레이어 머리"로 나옴
