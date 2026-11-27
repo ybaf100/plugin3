@@ -98,7 +98,7 @@ public final class GroupSurvivalSystem extends JavaPlugin {
 
         SafeZoneFeature safeZone = new SafeZoneFeature(this);
         register(safeZone);
-        safeZone.setReadyUpgrades(upgrades::readyUpgrades);
+        safeZone.setReadyUpgrades(upgrades::readyUpgradesForBar);
         safeZone.start();
 
         AnonymityFeature anonymity = new AnonymityFeature(this);

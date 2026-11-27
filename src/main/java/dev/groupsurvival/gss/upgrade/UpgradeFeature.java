@@ -48,7 +48,8 @@ import org.jetbrains.annotations.NotNull;
  * - [재료 넣기]를 누르면 투입함(상자 창)이 열리고, 인벤토리의 재료를 직접 클릭해야만 들어감
  *   (일반 클릭 = 1개, 쉬프트 클릭 = 그 칸 전부, 자동 투입 없음). 나눠서 넣을 수 있고, 넣은 재료는 돌려주지 않음
  * - 강화/해금은 반드시 [강화하기] 버튼을 눌러야 함 (준비가 끝나면 액션바로 알림)
- * - 클릭음은 대화창의 [클릭음] 버튼으로 켜고 끔 (끄면 강화 창의 효과음이 모두 꺼짐)
+ * - 대화창 버튼은 마크 기본 클릭 소리, 투입함(상자 창) 클릭은 플러그인이 클릭음을 냄
+ * - [강화 알림] 버튼: 강화·해금 준비가 끝난 것을 액션바에 계속 표시할지 (플레이어별)
  */
 public final class UpgradeFeature implements Listener, CommandExecutor {
 
@@ -69,7 +70,7 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
     private final UpgradeTrack saturation;
     private final Map<String, UpgradeTrack> tracks = new LinkedHashMap<>();
     private final UpgradeScreens screens;
-    private final NamespacedKey soundKey;
+    private final NamespacedKey readyBarKey;
     /** 이미 "준비 완료"를 알린 단계 (트랙:단계). 같은 단계에서는 한 번만 알림 */
     private final Map<UUID, Set<String>> readyNotified = new ConcurrentHashMap<>();
     /** 대화창을 연 적이 있는 플레이어 (플러그인 종료 때 닫기용) */
@@ -82,7 +83,7 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         this.data = new UpgradeData(plugin);
         this.effects = effects;
         this.nightVision = nightVision;
-        this.soundKey = new NamespacedKey(plugin, "ui_sound");
+        this.readyBarKey = new NamespacedKey(plugin, "ready_bar");
         var config = plugin.getConfig();
         this.health = UpgradeTrack.load(HEALTH, "체력", config.getInt("health-upgrade.start-hearts", 8),
                 config.getConfigurationSection("health-upgrade.steps"),
@@ -291,7 +292,52 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         return advancementRequirement == null || advancementRequirement.met(player);
     }
 
-    /** 버튼만 누르면 되는 항목 (예: "체력 강화", "포화 해금"). 안전구역 액션바에 표시 */
+    /** 강화 준비 액션바를 보는지 (플레이어가 강화 창에서 켜고 끔, 기본 켜짐) */
+    boolean readyBarEnabled(Player player) {
+        return player.getPersistentDataContainer().getOrDefault(readyBarKey, PersistentDataType.BOOLEAN, true);
+    }
+
+    /**
+     * 상시 액션바에 보여 줄 항목 (넣은 재료 + 인벤토리 재료로 지금 강화할 수 있는 것). 강화(금색)와 해금(노란색)을 나눔 (예: ["&6체력 · 성급함 강화 가능", "&e포화 해금 가능"]).
+     * 플레이어가 표시를 껐으면 빈 목록
+     */
+    public List<String> readyUpgradesForBar(Player player) {
+        if (!readyBarEnabled(player)) return List.of();
+        List<String> upgrades = new ArrayList<>();
+        List<String> unlocks = new ArrayList<>();
+        for (UpgradeTrack track : tracks.values()) {
+            if (!canUpgradeNow(player, track)) continue;
+            (isUnlock(track, data.level(player, track)) ? unlocks : upgrades).add(track.name());
+        }
+        List<String> result = new ArrayList<>();
+        if (!upgrades.isEmpty()) result.add("&6" + String.join(" · ", upgrades) + " 강화 가능"); // 강화 = 금색
+        if (!unlocks.isEmpty()) result.add("&e" + String.join(" · ", unlocks) + " 해금 가능");   // 해금 = 노란색
+        return result;
+    }
+
+    /**
+     * 지금 바로 강화할 수 있는지: 도전과제 조건을 채웠고, 재료가 [넣은 양 + 인벤토리에 있는 양]으로 모두 충분함.
+     * (재료를 아직 안 넣었어도 인벤토리에 다 있으면 강화 알림에 표시)
+     */
+    boolean canUpgradeNow(Player player, UpgradeTrack track) {
+        int level = data.level(player, track);
+        if (level >= track.max()) return false;
+        AdvancementRequirement advancementRequirement = track.advancementRequirement(level);
+        if (advancementRequirement != null && !advancementRequirement.met(player)) return false;
+        Map<String, Integer> progress = data.progress(player, track);
+        ItemStack[] storage = player.getInventory().getStorageContents(); // 투입함에서 넣을 수 있는 칸 (0~35)
+        for (Requirement requirement : track.requirements(level)) {
+            int need = requirement.amount() - progress.getOrDefault(requirement.key(), 0);
+            for (ItemStack stack : storage) {
+                if (need <= 0) break;
+                if (stack != null && !stack.getType().isAir() && requirement.matches(stack.getType())) need -= stack.getAmount();
+            }
+            if (need > 0) return false;
+        }
+        return true;
+    }
+
+    /** 버튼만 누르면 되는 항목 (예: "체력 강화", "포화 해금") */
     public List<String> readyUpgrades(Player player) {
         List<String> result = new ArrayList<>();
         for (UpgradeTrack track : tracks.values()) {
@@ -329,16 +375,13 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         }, () -> pendingRefresh.remove(player.getUniqueId()));
     }
 
-    // ───────────────────────── 클릭음 ─────────────────────────
-
-    boolean soundEnabled(Player player) {
-        return player.getPersistentDataContainer().getOrDefault(soundKey, PersistentDataType.BOOLEAN, true);
-    }
+    // ───────────────────────── 효과음 ─────────────────────────
 
     private void sound(Player player, Sound sound, float volume, float pitch) {
-        if (soundEnabled(player)) player.playSound(player.getLocation(), sound, volume, pitch);
+        player.playSound(player.getLocation(), sound, volume, pitch);
     }
 
+    /** 투입함(상자 창) 클릭음. 대화창 버튼은 마크가 기본 클릭 소리를 내므로 쓰지 않음 */
     private void click(Player player) {
         sound(player, Sound.UI_BUTTON_CLICK, 0.5f, 1.2f);
     }
@@ -365,7 +408,6 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
     }
 
     private void handleButton(Player player, UpgradeTrack tab, String action) {
-        if (!action.equals("sound")) click(player);
         switch (action) {
             case "close" -> {
                 player.closeDialog();
@@ -376,11 +418,10 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
                 return;
             }
             case "upgrade" -> upgrade(player, tab);
-            case "sound" -> {
-                boolean enable = !soundEnabled(player);
-                player.getPersistentDataContainer().set(soundKey, PersistentDataType.BOOLEAN, enable);
-                click(player); // 켤 때만 들림
-                ActionBars.send(player, Component.text(enable ? "클릭음 켜짐" : "클릭음 꺼짐",
+            case "ready_bar" -> {
+                boolean enable = !readyBarEnabled(player);
+                player.getPersistentDataContainer().set(readyBarKey, PersistentDataType.BOOLEAN, enable);
+                ActionBars.send(player, Component.text(enable ? "강화 준비 알림 켜짐" : "강화 준비 알림 꺼짐",
                         enable ? NamedTextColor.GREEN : NamedTextColor.GRAY));
             }
             case "nv" -> {

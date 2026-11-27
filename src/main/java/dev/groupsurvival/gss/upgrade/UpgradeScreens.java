@@ -199,7 +199,7 @@ final class UpgradeScreens {
                             feature.isReady(player, other) ? NamedTextColor.GREEN : NamedTextColor.GRAY)));
         }
 
-        // 2줄: 재료 넣기 / 강화하기 / 클릭음
+        // 2줄: 재료 넣기 / 강화하기 / 강화 알림
         String action = feature.actionWord(track, level);
         buttons.add(button(track, "deposit",
                 text("재료 넣기", maxed ? NamedTextColor.DARK_GRAY : NamedTextColor.WHITE),
@@ -219,10 +219,10 @@ final class UpgradeScreens {
             upgradeTip = text(tip, NamedTextColor.RED);
         }
         buttons.add(button(track, "upgrade", upgradeLabel, upgradeTip));
-        boolean sound = feature.soundEnabled(player);
-        buttons.add(button(track, "sound",
-                text("클릭음: " + (sound ? "켜짐" : "꺼짐"), sound ? NamedTextColor.GREEN : NamedTextColor.GRAY),
-                text("강화 창의 효과음을 켜고 끕니다", NamedTextColor.GRAY)));
+        boolean readyBar = feature.readyBarEnabled(player);
+        buttons.add(button(track, "ready_bar",
+                text("강화 알림: " + (readyBar ? "켜짐" : "꺼짐"), readyBar ? NamedTextColor.GREEN : NamedTextColor.GRAY),
+                text("강화·해금 준비가 끝나면 액션바에 계속 표시합니다", NamedTextColor.GRAY)));
 
         // 3줄: 야간투시 / 성급함 / 포화 켜고 끄기
         if (feature.nightVision() != null) {
@@ -233,6 +233,7 @@ final class UpgradeScreens {
         }
         buttons.add(toggleButton(player, track, "toggle_haste", feature.track(UpgradeFeature.HASTE), NamedTextColor.GOLD));
         buttons.add(toggleButton(player, track, "toggle_saturation", feature.track(UpgradeFeature.SATURATION), NamedTextColor.GOLD));
+
         return buttons;
     }
 
