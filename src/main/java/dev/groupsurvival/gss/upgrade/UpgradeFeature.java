@@ -432,6 +432,14 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
                 openDeposit(player, tab);
                 return;
             }
+            case "preview" -> {
+                player.showDialog(screens.preview(player, tab));
+                return;
+            }
+            case "back" -> {
+                open(player, tab.id());
+                return;
+            }
             case "upgrade" -> upgrade(player, tab);
             case "ready_bar" -> {
                 boolean enable = !readyBarEnabled(player);

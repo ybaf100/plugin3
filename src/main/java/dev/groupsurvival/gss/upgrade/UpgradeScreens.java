@@ -127,7 +127,7 @@ final class UpgradeScreens {
                     .append(text("재료  ", NamedTextColor.WHITE))
                     .append(bar(reqs.isEmpty() ? 1 : (double) doneCount / reqs.size()))
                     .append(text("  " + doneCount + " / " + reqs.size() + "종", NamedTextColor.WHITE))
-                    .append(allDone ? text("  ✔ 완료", NamedTextColor.GREEN) : text("  · 자세히는 [재료 넣기]", NamedTextColor.GRAY))
+                    .append(allDone ? text("  ✔ 완료", NamedTextColor.GREEN) : text("  · 자세히는 [재료 보기]", NamedTextColor.GRAY))
                     .build());
         }
 
@@ -175,6 +175,109 @@ final class UpgradeScreens {
         return Dialog.create(factory -> factory.empty().base(base).type(type));
     }
 
+    // ───────────────────────── 재료 보기 (스크롤) ─────────────────────────
+
+    /**
+     * 재료 미리보기: 재료마다 한 줄 [아이콘 · 이름 · 10칸 막대 · 넣은 수 / 필요 수 · 상태 · 인벤토리],
+     * 아래에 도전과제. 본문이 길면 스크롤되고, 맨 아래 버튼 2개([재료 넣기] / [← 돌아가기])는 고정.
+     */
+    Dialog preview(Player player, UpgradeTrack track) {
+        UpgradeData data = feature.data();
+        int level = data.level(player, track);
+        boolean maxed = level >= track.max();
+        List<Requirement> reqs = maxed ? List.of() : track.requirements(level);
+        Map<String, Integer> progress = data.progress(player, track);
+        ItemStack[] storage = player.getInventory().getStorageContents();
+        List<DialogBody> body = new ArrayList<>();
+
+        if (maxed) {
+            body.add(DialogBody.plainMessage(text("최대 단계입니다 · 현재 " + track.label(level), NamedTextColor.GREEN), TEXT_WIDTH));
+        } else {
+            int doneCount = 0;
+            for (Requirement r : reqs) if (progress.getOrDefault(r.key(), 0) >= r.amount()) doneCount++;
+            body.add(DialogBody.plainMessage(text(track.label(level) + "  →  " + track.label(level + 1)
+                    + "   (재료 " + doneCount + " / " + reqs.size() + "종 완료)", NamedTextColor.YELLOW), TEXT_WIDTH));
+        }
+
+        for (Requirement r : reqs) {
+            int have = Math.min(r.amount(), progress.getOrDefault(r.key(), 0));
+            boolean done = have >= r.amount();
+            int inInventory = 0;
+            for (ItemStack stack : storage) {
+                if (stack != null && !stack.getType().isAir() && r.matches(stack.getType())) inInventory += stack.getAmount();
+            }
+            TextComponent.Builder line = Component.text()
+                    .append(colored(r.name(), done ? NamedTextColor.GREEN : NamedTextColor.WHITE))
+                    .append(Component.text("  "))
+                    .append(bar((double) have / r.amount()))
+                    .append(text("  " + have + " / " + r.amount() + "  ", NamedTextColor.WHITE));
+            if (done) {
+                line.append(text("✔ 완료", NamedTextColor.GREEN));
+            } else {
+                int left = r.amount() - have;
+                line.append(text(left + "개 남음", NamedTextColor.YELLOW));
+                if (inInventory > 0) {
+                    line.append(text("  · 인벤토리 " + inInventory, inInventory >= left ? NamedTextColor.GREEN : NamedTextColor.GRAY));
+                }
+            }
+            body.add(DialogBody.item(new ItemStack(r.icon()))
+                    .description(DialogBody.plainMessage(line.build(), TEXT_WIDTH - 40))
+                    .showDecorations(false)
+                    .showTooltip(true)
+                    .build());
+        }
+
+        AdvancementRequirement advancements = maxed ? null : track.advancementRequirement(level);
+        if (advancements != null) {
+            int advNeed = advancements.target();
+            int advHave = Math.min(advNeed, advancements.progress(player));
+            if (advancements.isSpecific()) {
+                body.add(DialogBody.plainMessage(text("필요한 도전과제  " + advHave + " / " + advNeed,
+                        advHave >= advNeed ? NamedTextColor.GREEN : NamedTextColor.LIGHT_PURPLE), TEXT_WIDTH));
+                for (Advancement advancement : advancements.advancements()) {
+                    boolean done = player.getAdvancementProgress(advancement).isDone();
+                    NamedTextColor color = done ? NamedTextColor.GREEN : NamedTextColor.RED;
+                    body.add(DialogBody.plainMessage(Component.text()
+                            .append(text(done ? " ✔ " : " ✘ ", color))
+                            .append(AdvancementRequirement.title(advancement).color(color).decoration(TextDecoration.ITALIC, false))
+                            .build(), TEXT_WIDTH));
+                }
+            } else {
+                boolean ok = advHave >= advNeed;
+                body.add(DialogBody.item(new ItemStack(Material.KNOWLEDGE_BOOK))
+                        .description(DialogBody.plainMessage(Component.text()
+                                .append(text("도전과제", NamedTextColor.LIGHT_PURPLE))
+                                .append(Component.text("  "))
+                                .append(bar(advNeed == 0 ? 1 : (double) advHave / advNeed))
+                                .append(text("  " + advHave + " / " + advNeed + "  ", NamedTextColor.WHITE))
+                                .append(ok ? text("✔ 달성", NamedTextColor.GREEN) : text((advNeed - advHave) + "개 남음", NamedTextColor.RED))
+                                .build(), TEXT_WIDTH - 40))
+                        .showDecorations(false)
+                        .showTooltip(false)
+                        .build());
+            }
+        }
+
+        DialogBase base = DialogBase.builder(text(track.name() + " 재료", NamedTextColor.GOLD).decorate(TextDecoration.BOLD))
+                .externalTitle(text("재료 보기", NamedTextColor.GOLD))
+                .canCloseWithEscape(true)
+                .pause(false)
+                .afterAction(DialogBase.DialogAfterAction.NONE)
+                .body(body)
+                .build();
+        ActionButton deposit = ActionButton.builder(text("재료 넣기", maxed ? NamedTextColor.DARK_GRAY : NamedTextColor.WHITE))
+                .width(150)
+                .tooltip(text("투입함을 열어 인벤토리의 재료를 넣습니다", NamedTextColor.GRAY))
+                .action(DialogAction.customClick(UpgradeFeature.buttonKey(track, "deposit"), null))
+                .build();
+        ActionButton back = ActionButton.builder(text("← 돌아가기", NamedTextColor.WHITE))
+                .width(150)
+                .action(DialogAction.customClick(UpgradeFeature.buttonKey(track, "back"), null))
+                .build();
+        DialogType type = DialogType.confirmation(deposit, back); // 버튼 2개는 화면 맨 아래에 고정
+        return Dialog.create(factory -> factory.empty().base(base).type(type));
+    }
+
     private static ActionButton button(UpgradeTrack tab, String action, Component label, Component tooltip) {
         ActionButton.Builder builder = ActionButton.builder(label)
                 .width(BUTTON_WIDTH)
@@ -199,8 +302,11 @@ final class UpgradeScreens {
                             feature.isReady(player, other) ? NamedTextColor.GREEN : NamedTextColor.GRAY)));
         }
 
-        // 2줄: 재료 넣기 / 강화하기 / 강화 알림
+        // 2줄: 재료 보기 / 재료 넣기 / 강화하기
         String action = feature.actionWord(track, level);
+        buttons.add(button(track, "preview",
+                text("재료 보기", maxed ? NamedTextColor.DARK_GRAY : NamedTextColor.AQUA),
+                text("재료마다 넣은 양 · 남은 양 · 인벤토리에 있는 양을 봅니다 (스크롤)", NamedTextColor.GRAY)));
         buttons.add(button(track, "deposit",
                 text("재료 넣기", maxed ? NamedTextColor.DARK_GRAY : NamedTextColor.WHITE),
                 text(maxed ? "최대 단계입니다" : "투입함을 열어 인벤토리의 재료를 넣습니다", NamedTextColor.GRAY)));
@@ -219,10 +325,6 @@ final class UpgradeScreens {
             upgradeTip = text(tip, NamedTextColor.RED);
         }
         buttons.add(button(track, "upgrade", upgradeLabel, upgradeTip));
-        boolean readyBar = feature.readyBarEnabled(player);
-        buttons.add(button(track, "ready_bar",
-                text("강화 알림: " + (readyBar ? "켜짐" : "꺼짐"), readyBar ? NamedTextColor.GREEN : NamedTextColor.GRAY),
-                text("강화·해금 준비가 끝나면 액션바에 계속 표시합니다", NamedTextColor.GRAY)));
 
         // 3줄: 야간투시 / 성급함 / 포화 켜고 끄기
         if (feature.nightVision() != null) {
@@ -234,6 +336,11 @@ final class UpgradeScreens {
         buttons.add(toggleButton(player, track, "toggle_haste", feature.track(UpgradeFeature.HASTE), NamedTextColor.GOLD));
         buttons.add(toggleButton(player, track, "toggle_saturation", feature.track(UpgradeFeature.SATURATION), NamedTextColor.GOLD));
 
+        // 4줄: 강화 알림 (액션바 상시 표시)
+        boolean readyBar = feature.readyBarEnabled(player);
+        buttons.add(button(track, "ready_bar",
+                text("강화 알림: " + (readyBar ? "켜짐" : "꺼짐"), readyBar ? NamedTextColor.GREEN : NamedTextColor.GRAY),
+                text("강화·해금할 수 있거나 재료가 다 모이면 액션바에 계속 표시합니다", NamedTextColor.GRAY)));
         return buttons;
     }
 
