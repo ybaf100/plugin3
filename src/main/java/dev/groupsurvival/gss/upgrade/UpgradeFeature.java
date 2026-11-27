@@ -34,6 +34,7 @@ import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -44,7 +45,8 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * 강화 (/강화, /체력강화, /성급함강화, /포화강화) + 성급함 켜기/끄기 (/성급함, /hs).
- * - 강화 화면은 대화창 (진행 상황, 도전과제, 버튼)
+ * - 강화 창 기본 화면은 재료 목록(스크롤, 아래 버튼 고정), [메뉴 ▶]에서 탭 이동·효과 켜기/끄기
+ * - 웅크린 채 F = 강화 창 열기 (메뉴에서 끌 수 있음, 기본 켜짐)
  * - [재료 넣기]를 누르면 투입함(상자 창)이 열리고, 인벤토리의 재료를 직접 클릭해야만 들어감
  *   (일반 클릭 = 1개, 쉬프트 클릭 = 그 칸 전부, 자동 투입 없음). 나눠서 넣을 수 있고, 넣은 재료는 돌려주지 않음
  * - 강화/해금은 반드시 [강화하기] 버튼을 눌러야 함 (준비가 끝나면 액션바로 알림)
@@ -71,6 +73,9 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
     private final Map<String, UpgradeTrack> tracks = new LinkedHashMap<>();
     private final UpgradeScreens screens;
     private final NamespacedKey readyBarKey;
+    private final NamespacedKey hotkeyKey;
+    /** 마지막으로 본 탭 (Shift+F 로 열 때 사용) */
+    private final Map<UUID, String> lastTab = new ConcurrentHashMap<>();
     /** 이미 "준비 완료"를 알린 단계 (트랙:단계). 같은 단계에서는 한 번만 알림 */
     private final Map<UUID, Set<String>> readyNotified = new ConcurrentHashMap<>();
     /** 대화창을 연 적이 있는 플레이어 (플러그인 종료 때 닫기용) */
@@ -84,6 +89,7 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         this.effects = effects;
         this.nightVision = nightVision;
         this.readyBarKey = new NamespacedKey(plugin, "ready_bar");
+        this.hotkeyKey = new NamespacedKey(plugin, "menu_hotkey");
         var config = plugin.getConfig();
         this.health = UpgradeTrack.load(HEALTH, "체력", config.getInt("health-upgrade.start-hearts", 8),
                 config.getConfigurationSection("health-upgrade.steps"),
@@ -184,10 +190,33 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         return true;
     }
 
-    /** 대화창 열기 */
+    /** 강화 창 열기 (기본 화면 = 재료 목록) */
     public void open(Player player, String tab) {
         dialogViewers.add(player.getUniqueId());
+        lastTab.put(player.getUniqueId(), track(tab).id());
+        player.showDialog(screens.preview(player, track(tab)));
+    }
+
+    /** 메뉴 (탭 이동, 강화하기, 효과 켜기/끄기 등) */
+    public void openMenu(Player player, String tab) {
+        dialogViewers.add(player.getUniqueId());
+        lastTab.put(player.getUniqueId(), track(tab).id());
         player.showDialog(screens.dialog(player, track(tab)));
+    }
+
+    // ───────────────────────── Shift+F 로 열기 ─────────────────────────
+
+    boolean hotkeyEnabled(Player player) {
+        return player.getPersistentDataContainer().getOrDefault(hotkeyKey, PersistentDataType.BOOLEAN, true);
+    }
+
+    /** 웅크린 채 F(손 바꾸기) = 강화 창 열기 (메뉴에서 끌 수 있음, 기본 켜짐). 나침반·양털 F 기능보다 먼저 처리 */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onHotkey(PlayerSwapHandItemsEvent event) {
+        Player player = event.getPlayer();
+        if (!player.isSneaking() || !hotkeyEnabled(player)) return;
+        event.setCancelled(true);
+        open(player, lastTab.getOrDefault(player.getUniqueId(), HEALTH));
     }
 
     /** 투입함 열기 */
@@ -198,6 +227,7 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
             open(player, track.id());
             return;
         }
+        lastTab.put(player.getUniqueId(), track.id());
         DepositMenu menu = new DepositMenu(player.getUniqueId(), track.id(), track.requirements(level).size());
         Inventory inventory = plugin.getServer().createInventory(menu, menu.size(),
                 Component.text("재료 넣기 · " + track.name() + " " + track.label(level) + " → " + track.label(level + 1)));
@@ -263,6 +293,7 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
         readyNotified.remove(id);
+        lastTab.remove(id);
         dialogViewers.remove(id);
         pendingRefresh.remove(id);
     }
@@ -433,14 +464,25 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
                 return;
             }
             case "preview" -> {
-                player.showDialog(screens.preview(player, tab));
+                open(player, tab.id());
                 return;
             }
-            case "back" -> {
+            case "menu", "back" -> {
+                openMenu(player, tab.id());
+                return;
+            }
+            case "upgrade_p" -> { // 재료 목록 화면의 [강화하기]
+                upgrade(player, tab);
                 open(player, tab.id());
                 return;
             }
             case "upgrade" -> upgrade(player, tab);
+            case "hotkey" -> {
+                boolean enable = !hotkeyEnabled(player);
+                player.getPersistentDataContainer().set(hotkeyKey, PersistentDataType.BOOLEAN, enable);
+                ActionBars.send(player, Component.text(enable ? "Shift+F로 강화 창 열기 켜짐" : "Shift+F로 강화 창 열기 꺼짐",
+                        enable ? NamedTextColor.GREEN : NamedTextColor.GRAY));
+            }
             case "ready_bar" -> {
                 boolean enable = !readyBarEnabled(player);
                 player.getPersistentDataContainer().set(readyBarKey, PersistentDataType.BOOLEAN, enable);
@@ -454,12 +496,12 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
             case "toggle_saturation" -> toggle(player, saturation);
             default -> {
                 if (action.startsWith("tab_")) {
-                    open(player, action.substring(4));
+                    openMenu(player, action.substring(4));
                     return;
                 }
             }
         }
-        open(player, tab.id()); // 바뀐 내용으로 다시 그림
+        openMenu(player, tab.id()); // 바뀐 내용으로 다시 그림
     }
 
     private void toggle(Player player, UpgradeTrack track) {

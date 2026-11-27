@@ -190,6 +190,17 @@ final class UpgradeScreens {
         ItemStack[] storage = player.getInventory().getStorageContents();
         List<DialogBody> body = new ArrayList<>();
 
+        if (feature.isHealth(track)) {
+            TextComponent.Builder hearts = Component.text();
+            for (int n = 1; n <= track.max(); n++) {
+                hearts.append(Component.text("❤", n <= level ? NamedTextColor.RED : NamedTextColor.DARK_GRAY));
+            }
+            body.add(DialogBody.plainMessage(hearts.build(), TEXT_WIDTH));
+        } else if (level >= 1) {
+            boolean on = data.enabled(player, track);
+            body.add(DialogBody.plainMessage(text(track.name() + " " + track.label(level) + " · " + (on ? "켜짐" : "꺼짐"),
+                    on ? NamedTextColor.GOLD : NamedTextColor.GRAY), TEXT_WIDTH));
+        }
         if (maxed) {
             body.add(DialogBody.plainMessage(text("최대 단계입니다 · 현재 " + track.label(level), NamedTextColor.GREEN), TEXT_WIDTH));
         } else {
@@ -258,21 +269,34 @@ final class UpgradeScreens {
             }
         }
 
-        DialogBase base = DialogBase.builder(text(track.name() + " 재료", NamedTextColor.GOLD).decorate(TextDecoration.BOLD))
-                .externalTitle(text("재료 보기", NamedTextColor.GOLD))
+        DialogBase base = DialogBase.builder(text(track.name() + " 강화", NamedTextColor.GOLD).decorate(TextDecoration.BOLD))
+                .externalTitle(text("강화", NamedTextColor.GOLD))
                 .canCloseWithEscape(true)
                 .pause(false)
                 .afterAction(DialogBase.DialogAfterAction.NONE)
                 .body(body)
                 .build();
-        ActionButton deposit = ActionButton.builder(text("재료 넣기", maxed ? NamedTextColor.DARK_GRAY : NamedTextColor.WHITE))
+        // 아래 고정 버튼: [강화하기](조건을 다 채웠을 때) 또는 [재료 넣기] / [메뉴 ▶]
+        boolean complete = feature.isReady(player, track);
+        ActionButton deposit;
+        if (complete) {
+            String action = feature.actionWord(track, level);
+            deposit = ActionButton.builder(text(action + "하기", NamedTextColor.GREEN).decorate(TextDecoration.BOLD))
+                    .width(150)
+                    .tooltip(text(track.label(level) + " → " + track.label(level + 1), NamedTextColor.GREEN))
+                    .action(DialogAction.customClick(UpgradeFeature.buttonKey(track, "upgrade_p"), null))
+                    .build();
+        } else {
+            deposit = ActionButton.builder(text("재료 넣기", maxed ? NamedTextColor.DARK_GRAY : NamedTextColor.WHITE))
+                    .width(150)
+                    .tooltip(text(maxed ? "최대 단계입니다" : "투입함을 열어 인벤토리의 재료를 넣습니다", NamedTextColor.GRAY))
+                    .action(DialogAction.customClick(UpgradeFeature.buttonKey(track, "deposit"), null))
+                    .build();
+        }
+        ActionButton back = ActionButton.builder(text("메뉴 ▶", NamedTextColor.YELLOW))
                 .width(150)
-                .tooltip(text("투입함을 열어 인벤토리의 재료를 넣습니다", NamedTextColor.GRAY))
-                .action(DialogAction.customClick(UpgradeFeature.buttonKey(track, "deposit"), null))
-                .build();
-        ActionButton back = ActionButton.builder(text("← 돌아가기", NamedTextColor.WHITE))
-                .width(150)
-                .action(DialogAction.customClick(UpgradeFeature.buttonKey(track, "back"), null))
+                .tooltip(text("다른 강화(체력·성급함·포화), 효과 켜기/끄기, 알림 설정", NamedTextColor.GRAY))
+                .action(DialogAction.customClick(UpgradeFeature.buttonKey(track, "menu"), null))
                 .build();
         DialogType type = DialogType.confirmation(deposit, back); // 버튼 2개는 화면 맨 아래에 고정
         return Dialog.create(factory -> factory.empty().base(base).type(type));
@@ -341,6 +365,10 @@ final class UpgradeScreens {
         buttons.add(button(track, "ready_bar",
                 text("강화 알림: " + (readyBar ? "켜짐" : "꺼짐"), readyBar ? NamedTextColor.GREEN : NamedTextColor.GRAY),
                 text("강화·해금할 수 있거나 재료가 다 모이면 액션바에 계속 표시합니다", NamedTextColor.GRAY)));
+        boolean hotkey = feature.hotkeyEnabled(player);
+        buttons.add(button(track, "hotkey",
+                text("Shift+F 열기: " + (hotkey ? "켜짐" : "꺼짐"), hotkey ? NamedTextColor.GREEN : NamedTextColor.GRAY),
+                text("웅크린 채 F(손 바꾸기)를 누르면 강화 창이 열립니다", NamedTextColor.GRAY)));
         return buttons;
     }
 
