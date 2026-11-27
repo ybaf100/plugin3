@@ -46,7 +46,7 @@ import org.jetbrains.annotations.NotNull;
  * 강화 (/강화, /체력강화, /성급함강화, /포화강화) + 성급함 켜기/끄기 (/성급함, /hs).
  * - 강화 화면은 대화창 (진행 상황, 도전과제, 버튼)
  * - [재료 넣기]를 누르면 투입함(상자 창)이 열리고, 인벤토리의 재료를 직접 클릭해야만 들어감
- *   (좌클릭 = 그 칸 전부, 우클릭 = 1개, 자동 투입 없음). 나눠서 넣을 수 있고, 넣은 재료는 돌려주지 않음
+ *   (일반 클릭 = 1개, 쉬프트 클릭 = 그 칸 전부, 자동 투입 없음). 나눠서 넣을 수 있고, 넣은 재료는 돌려주지 않음
  * - 강화/해금은 반드시 [강화하기] 버튼을 눌러야 함 (준비가 끝나면 액션바로 알림)
  * - 클릭음은 대화창의 [클릭음] 버튼으로 켜고 끔 (끄면 강화 창의 효과음이 모두 꺼짐)
  */
@@ -474,9 +474,11 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         if (clicked == null) return;
         int slot = event.getSlot();
         ClickType click = event.getClick();
-        if (click != ClickType.LEFT && click != ClickType.RIGHT) return; // 쉬프트/숫자키/더블클릭 등은 무시
+        boolean all = click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT;
+        if (click != ClickType.LEFT && click != ClickType.RIGHT && !all) return; // 숫자키/더블클릭/버리기 등은 무시
 
         if (clicked == event.getView().getTopInventory()) {
+            if (all) return;
             player.getScheduler().run(plugin, task -> {
                 if (!stillOpen(player, menu)) return;
                 click(player);
@@ -486,8 +488,8 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
             return;
         }
         if (clicked == event.getView().getBottomInventory()) {
-            // 재료 넣기: 좌클릭 = 그 칸 전부(필요한 만큼만), 우클릭 = 1개
-            boolean one = click == ClickType.RIGHT;
+            // 재료 넣기: 일반 클릭(좌/우) = 1개, 쉬프트 클릭 = 그 칸 전부(필요한 만큼만)
+            boolean one = !all;
             player.getScheduler().run(plugin, task -> deposit(player, menu, slot, one), null);
         }
     }
