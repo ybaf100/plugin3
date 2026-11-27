@@ -24,7 +24,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 /**
  * 강화 화면 그리기.
- * - 대화창: 요약, (체력) 하트 줄, 재료마다 한 줄 [아이콘 · 이름 · 10칸 막대 · 개수 · 상태], 도전과제(✔ 초록 / ✘ 빨강), 버튼
+ * - 대화창: 단계, (체력) 하트 줄, 재료 전체 진행 막대, 도전과제(✔ 초록 / ✘ 빨강), 버튼.
+ *   본문 줄 수가 항상 같아서 버튼 위치가 바뀌지 않음
  * - 투입함: 재료 줄(남은 개수) + 게이지 줄(%) + 아랫줄(사용법 · 돌아가기)
  */
 final class UpgradeScreens {
@@ -35,8 +36,19 @@ final class UpgradeScreens {
 
     private final UpgradeFeature feature;
 
+    /** 도전과제 목록 칸 수 = 설정에서 가장 긴 지정형 목록 (모든 화면의 줄 수를 맞추기 위함) */
+    private final int maxAdvancementLines;
+
     UpgradeScreens(UpgradeFeature feature) {
         this.feature = feature;
+        int max = 1;
+        for (UpgradeTrack track : feature.tracks()) {
+            for (int level = track.start(); level < track.max(); level++) {
+                AdvancementRequirement requirement = track.advancementRequirement(level);
+                if (requirement != null && requirement.isSpecific()) max = Math.max(max, requirement.advancements().size());
+            }
+        }
+        this.maxAdvancementLines = Math.min(max, 10);
     }
 
     // ───────────────────────── 공통 ─────────────────────────
@@ -78,82 +90,76 @@ final class UpgradeScreens {
         boolean complete = !maxed && doneCount == reqs.size() && advHave >= advNeed;
         String action = feature.actionWord(track, level);
 
-        List<DialogBody> body = new ArrayList<>();
+        // 본문은 모든 탭·상태에서 줄 수가 같음 → 아래 버튼 위치가 절대 바뀌지 않음
+        // (한 줄이 넘치지 않게 짧게 씀. 재료별 자세한 진행은 투입함에서 봄)
+        List<Component> lines = new ArrayList<>();
 
-        // 요약
+        // 1줄: 단계
         if (maxed) {
-            body.add(DialogBody.plainMessage(text("최대 단계입니다 · 현재 " + track.label(level), NamedTextColor.GREEN), TEXT_WIDTH));
+            lines.add(text("최대 단계 · 현재 " + track.label(level), NamedTextColor.GREEN));
         } else {
-            body.add(DialogBody.plainMessage(text("현재 " + track.label(level) + "  →  다음 " + track.label(level + 1), NamedTextColor.YELLOW), TEXT_WIDTH));
-            String counts = "재료 " + doneCount + " / " + reqs.size() + (advancements != null ? " · 도전과제 " + advHave + " / " + advNeed : "");
-            body.add(DialogBody.plainMessage(text(complete ? counts + " · " + action + " 준비 완료!" : counts,
-                    complete ? NamedTextColor.GREEN : NamedTextColor.GRAY), TEXT_WIDTH));
+            lines.add(Component.text()
+                    .append(text("현재 " + track.label(level) + "  →  다음 " + track.label(level + 1), NamedTextColor.YELLOW))
+                    .append(complete ? text("   ✔ " + action + " 준비 완료", NamedTextColor.GREEN) : Component.empty())
+                    .build());
         }
 
-        // 체력: 하트 줄 / 성급함·포화: 지금 상태
+        // 2줄: 체력은 하트, 성급함·포화는 지금 상태
         if (feature.isHealth(track)) {
             TextComponent.Builder hearts = Component.text();
             for (int n = 1; n <= track.max(); n++) {
                 hearts.append(Component.text("❤", n <= level ? NamedTextColor.RED : NamedTextColor.DARK_GRAY));
             }
-            body.add(DialogBody.plainMessage(hearts.build(), TEXT_WIDTH));
+            lines.add(hearts.build());
         } else if (level >= 1) {
             boolean on = data.enabled(player, track);
-            body.add(DialogBody.plainMessage(text(track.name() + " " + track.label(level) + " · " + (on ? "켜짐" : "꺼짐"),
-                    on ? NamedTextColor.GOLD : NamedTextColor.GRAY), TEXT_WIDTH));
+            lines.add(text(track.name() + " " + track.label(level) + " · " + (on ? "켜짐" : "꺼짐"), on ? NamedTextColor.GOLD : NamedTextColor.GRAY));
+        } else {
+            lines.add(text(track.nameObject() + " 아직 해금하지 않았습니다", NamedTextColor.GRAY));
         }
 
-        // 재료: 한 줄에 하나
-        for (Requirement r : reqs) {
-            int have = Math.min(r.amount(), progress.getOrDefault(r.key(), 0));
-            boolean done = have >= r.amount();
-            Component line = Component.text()
-                    .append(colored(r.name(), done ? NamedTextColor.GREEN : NamedTextColor.WHITE))
-                    .append(Component.text("  "))
-                    .append(bar((double) have / r.amount()))
-                    .append(text("  " + have + " / " + r.amount() + "  ", NamedTextColor.WHITE))
-                    .append(done ? text("✔ 완료", NamedTextColor.GREEN) : text((r.amount() - have) + "개 남음", NamedTextColor.YELLOW))
-                    .build();
-            body.add(DialogBody.item(new ItemStack(r.icon()))
-                    .description(DialogBody.plainMessage(line, TEXT_WIDTH - 40))
-                    .showDecorations(false)
-                    .showTooltip(true)
+        // 3줄: 재료 전체 진행
+        if (maxed) {
+            lines.add(text("재료  모두 끝났습니다", NamedTextColor.GREEN));
+        } else {
+            boolean allDone = doneCount == reqs.size();
+            lines.add(Component.text()
+                    .append(text("재료  ", NamedTextColor.WHITE))
+                    .append(bar(reqs.isEmpty() ? 1 : (double) doneCount / reqs.size()))
+                    .append(text("  " + doneCount + " / " + reqs.size() + "종", NamedTextColor.WHITE))
+                    .append(allDone ? text("  ✔ 완료", NamedTextColor.GREEN) : text("  · 자세히는 [재료 넣기]", NamedTextColor.GRAY))
                     .build());
         }
 
-        // 도전과제
-        if (advancements != null) {
-            if (advancements.isSpecific()) {
-                body.add(DialogBody.plainMessage(text("필요한 도전과제 (" + advHave + " / " + advNeed + ")", NamedTextColor.LIGHT_PURPLE), TEXT_WIDTH));
-                for (Advancement advancement : advancements.advancements()) {
-                    boolean done = player.getAdvancementProgress(advancement).isDone();
-                    NamedTextColor color = done ? NamedTextColor.GREEN : NamedTextColor.RED;
-                    body.add(DialogBody.plainMessage(Component.text()
-                            .append(text(done ? "✔ " : "✘ ", color))
-                            .append(AdvancementRequirement.title(advancement).color(color).decoration(TextDecoration.ITALIC, false))
-                            .build(), TEXT_WIDTH));
-                }
-            } else {
-                boolean ok = advHave >= advNeed;
-                body.add(DialogBody.item(new ItemStack(Material.KNOWLEDGE_BOOK))
-                        .description(DialogBody.plainMessage(Component.text()
-                                .append(text("도전과제", NamedTextColor.LIGHT_PURPLE))
-                                .append(Component.text("  "))
-                                .append(bar(advNeed == 0 ? 1 : (double) advHave / advNeed))
-                                .append(text("  " + advHave + " / " + advNeed + "  ", NamedTextColor.WHITE))
-                                .append(ok ? text("✔ 달성", NamedTextColor.GREEN) : text((advNeed - advHave) + "개 남음", NamedTextColor.RED))
-                                .build(), TEXT_WIDTH - 40))
-                        .showDecorations(false)
-                        .showTooltip(false)
+        // 4줄~: 도전과제 (머리 1줄 + 목록 칸 고정)
+        List<Component> advLines = new ArrayList<>();
+        if (advancements == null) {
+            advLines.add(text("도전과제  이번 단계는 조건 없음", NamedTextColor.GRAY));
+        } else if (advancements.isSpecific()) {
+            advLines.add(text("필요한 도전과제  " + advHave + " / " + advNeed, advHave >= advNeed ? NamedTextColor.GREEN : NamedTextColor.LIGHT_PURPLE));
+            for (Advancement advancement : advancements.advancements()) {
+                boolean done = player.getAdvancementProgress(advancement).isDone();
+                NamedTextColor color = done ? NamedTextColor.GREEN : NamedTextColor.RED;
+                advLines.add(Component.text()
+                        .append(text(done ? " ✔ " : " ✘ ", color))
+                        .append(AdvancementRequirement.title(advancement).color(color).decoration(TextDecoration.ITALIC, false))
                         .build());
-                body.add(DialogBody.plainMessage(text("레시피 해금은 세지 않습니다", NamedTextColor.DARK_GRAY), TEXT_WIDTH));
             }
+        } else {
+            boolean ok = advHave >= advNeed;
+            advLines.add(Component.text()
+                    .append(text("도전과제  ", NamedTextColor.LIGHT_PURPLE))
+                    .append(bar(advNeed == 0 ? 1 : (double) advHave / advNeed))
+                    .append(text("  " + advHave + " / " + advNeed + "  ", NamedTextColor.WHITE))
+                    .append(ok ? text("✔ 달성", NamedTextColor.GREEN) : text((advNeed - advHave) + "개 남음", NamedTextColor.RED))
+                    .build());
+            advLines.add(text(" 레시피 해금은 세지 않습니다", NamedTextColor.DARK_GRAY));
         }
+        while (advLines.size() < 1 + maxAdvancementLines) advLines.add(Component.text(" ")); // 빈 줄도 높이를 차지하게 공백
+        lines.addAll(advLines.subList(0, 1 + maxAdvancementLines));
 
-        if (!maxed) {
-            body.add(DialogBody.plainMessage(text("[재료 넣기]에서 인벤토리의 재료를 클릭해 넣습니다 · 나눠서 넣을 수 있고, 넣은 재료는 돌려받을 수 없습니다",
-                    NamedTextColor.GRAY), TEXT_WIDTH));
-        }
+        List<DialogBody> body = new ArrayList<>();
+        for (Component line : lines) body.add(DialogBody.plainMessage(line, TEXT_WIDTH));
 
         DialogBase base = DialogBase.builder(text(track.name() + " 강화", NamedTextColor.GOLD).decorate(TextDecoration.BOLD))
                 .externalTitle(text("강화", NamedTextColor.GOLD))

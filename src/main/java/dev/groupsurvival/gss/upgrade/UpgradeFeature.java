@@ -365,6 +365,7 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
     }
 
     private void handleButton(Player player, UpgradeTrack tab, String action) {
+        if (!action.equals("sound")) click(player);
         switch (action) {
             case "close" -> {
                 player.closeDialog();
@@ -378,6 +379,7 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
             case "sound" -> {
                 boolean enable = !soundEnabled(player);
                 player.getPersistentDataContainer().set(soundKey, PersistentDataType.BOOLEAN, enable);
+                click(player); // 켤 때만 들림
                 ActionBars.send(player, Component.text(enable ? "클릭음 켜짐" : "클릭음 꺼짐",
                         enable ? NamedTextColor.GREEN : NamedTextColor.GRAY));
             }
@@ -475,10 +477,10 @@ public final class UpgradeFeature implements Listener, CommandExecutor {
         if (click != ClickType.LEFT && click != ClickType.RIGHT) return; // 쉬프트/숫자키/더블클릭 등은 무시
 
         if (clicked == event.getView().getTopInventory()) {
-            if (slot != menu.backSlot()) return;
             player.getScheduler().run(plugin, task -> {
                 if (!stillOpen(player, menu)) return;
                 click(player);
+                if (slot != menu.backSlot()) return;
                 open(player, menu.tab()); // 대화창이 열리면서 투입함은 닫힘
             }, null);
             return;
